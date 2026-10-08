@@ -97,20 +97,24 @@ class TecSimulado {
       return _error(403, 'CAMBIO_CLAVE_OBLIGATORIO', 'Debe cambiar su contraseña.');
     }
     consultas.add(peticion.url);
-    return _tribunal(ruta, usuarios[nombre]!.roles, peticion.url.queryParameters);
+    return _tribunal(ruta, usuarios[nombre]!.roles, peticion.url.queryParameters, peticion.method, cuerpo);
   }
 
   // ------------------------------------------------------------ Módulo Tribunal
 
   /// Miembros simulados de la iglesia (más de una página).
   final List<Map<String, dynamic>> miembros = [
-    for (var i = 1; i <= 45; i++) {'nombre': 'Miembro ${i.toString().padLeft(2, '0')}', 'habilitado': i.isOdd, 'revisado': i % 3 == 0},
+    for (var i = 1; i <= 45; i++) {'id': i, 'nombre': 'Miembro ${i.toString().padLeft(2, '0')}', 'habilitado': i.isOdd, 'revisado': i % 3 == 0},
   ];
 
   /// Estado del escrutinio de la mesa simulada del Presidente.
   String estadoMesa = 'ABIERTO';
 
-  http.Response _tribunal(String ruta, List<String> roles, Map<String, String> parametros) {
+  /// El cronograma simulado permite cambiar la habilitación de los miembros.
+  bool edicionAbierta = true;
+
+  http.Response _tribunal(
+      String ruta, List<String> roles, Map<String, String> parametros, String metodo, Map<String, dynamic> cuerpo) {
     bool permite(Set<String> requeridos) => roles.any(requeridos.contains);
     const presidente = {'SITEC-Presidente-mesa'};
     const iglesia = {'SITEC-IglesiaAdmin'};
@@ -124,6 +128,19 @@ class TecSimulado {
                 : null;
     if (requeridos == null) return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
     if (!permite(requeridos)) return _error(403, 'SIN_PERMISO', 'No tiene permiso para esta operación.');
+
+    final habilitacion = RegExp(r'^/tribunal/iglesia/miembros/(\d+)/habilitacion$').firstMatch(ruta);
+    if (habilitacion != null && metodo == 'PUT') {
+      if (!edicionAbierta) {
+        return _error(409, 'EDICION_CERRADA', 'La actualización del padrón está cerrada por el cronograma electoral.');
+      }
+      final id = int.parse(habilitacion.group(1)!);
+      final i = miembros.indexWhere((m) => m['id'] == id);
+      if (i < 0) return _error(404, 'MIEMBRO_NO_DISPONIBLE', 'El miembro no existe o ya no está activo en la iglesia.');
+      if (cuerpo['habilitado'] is! bool) return _error(400, 'SOLICITUD_INVALIDA', 'Indique si el miembro queda habilitado.');
+      miembros[i] = {...miembros[i], 'habilitado': cuerpo['habilitado'], 'revisado': true};
+      return _json(200, miembros[i]);
+    }
 
     const ubicacion = {'mesaId': 7, 'mesa': 'MESA 7', 'recinto': 'Escuela Central', 'parroquia': 'Matriz', 'canton': 'Riobamba'};
     switch (ruta) {
@@ -171,6 +188,7 @@ class TecSimulado {
           'informacionCompleta': 40,
           'pendientesRevision': 5,
           'enOtraIglesia': 1,
+          'permiteEdicion': edicionAbierta,
         });
       case '/tribunal/iglesia/miembros':
         final busqueda = parametros['busqueda']?.toLowerCase();

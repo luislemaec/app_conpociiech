@@ -46,6 +46,10 @@ Nuevos módulos CONPOCIIECH: agregar `features/<modulo>/`, sus rutas en
 - **Logo provisional:** `assets/branding/logo_tec_provisional.png` (logo del TEC). Se
   reemplaza por el logo oficial de CONPOCIIECH al recibirlo; también quedan pendientes el
   icono y el splash definitivos.
+- **Icono y splash provisionales** (logo TEC): fuentes en `branding/`, configuración en
+  `flutter_launcher_icons.yaml` y `flutter_native_splash.yaml`. Con el logo oficial,
+  reemplazar esas imágenes y ejecutar `dart run flutter_launcher_icons` y
+  `dart run flutter_native_splash:create`.
 
 ## Ejecutar y probar
 
@@ -67,6 +71,7 @@ resolver `tribunal.local` y confiar en su certificado; la App no desactiva la va
 `android/key.properties` (con `storeFile`, `storePassword`, `keyAlias`, `keyPassword`) y el
 keystore **no se versionan** (`.gitignore`). Sin `key.properties` el build de release falla
 en lugar de firmarse con la llave de depuración.
+Pasos completos (crear la llave, versionado, App Bundle y Google Play): [docs/release-android.md](docs/release-android.md).
 
 ## Seguridad
 

@@ -32,6 +32,15 @@ class ApiTribunal {
     return PaginaMiembros.desdeJson((await _get('/tribunal/iglesia/miembros?$consulta'))!);
   }
 
+  /// Habilita o deshabilita a un miembro para participar en las elecciones. TEC valida el
+  /// cronograma y que el miembro sea de la iglesia del usuario, y lo marca como revisado.
+  Future<Miembro> cambiarHabilitacion(int miembroId, bool habilitado) async {
+    final json = await _sesion.autenticada((token) => _cliente.enviar(
+        'PUT', '/tribunal/iglesia/miembros/$miembroId/habilitacion',
+        token: token, cuerpo: {'habilitado': habilitado}));
+    return Miembro.desdeJson(json!);
+  }
+
   Future<ResumenProceso> resumenProceso() async => ResumenProceso.desdeJson((await _get('/tribunal/proceso/resumen'))!);
 
   Future<List<AvanceMesa>> avanceMesas() async =>
@@ -197,9 +206,11 @@ class IglesiaResumen {
     required this.informacionCompleta,
     required this.pendientesRevision,
     required this.enOtraIglesia,
+    this.permiteEdicion = false,
   });
 
   factory IglesiaResumen.desdeJson(Map<String, dynamic> j) => IglesiaResumen(
+        permiteEdicion: j['permiteEdicion'] as bool? ?? false,
         nombre: j['nombre'] as String? ?? '',
         comunidad: j['comunidad'] as String?,
         parroquia: j['parroquia'] as String?,
@@ -225,18 +236,23 @@ class IglesiaResumen {
   final int pendientesRevision;
   final int enOtraIglesia;
 
+  /// El cronograma vigente permite cambiar la habilitación de los miembros.
+  final bool permiteEdicion;
+
   String get lugar => [parroquia, canton, provincia].whereType<String>().join(', ');
 }
 
 class Miembro {
-  const Miembro({required this.nombre, required this.habilitado, required this.revisado});
+  const Miembro({required this.id, required this.nombre, required this.habilitado, required this.revisado});
 
   factory Miembro.desdeJson(Map<String, dynamic> j) => Miembro(
+        id: _entero(j['id']),
         nombre: j['nombre'] as String? ?? '',
         habilitado: j['habilitado'] as bool? ?? false,
         revisado: j['revisado'] as bool? ?? false,
       );
 
+  final int id;
   final String nombre;
   final bool habilitado;
   final bool revisado;

@@ -1,0 +1,15 @@
+# Pantalla de inicio nativa (provisional: logo TEC). Al recibir el logo oficial,
+# reemplazar las imágenes de branding/ y ejecutar:
+#   dart run flutter_native_splash:create
+flutter_native_splash:
+  color: "#FFFFFF"
+  # 1152 px = 288 dp: cabe en teléfonos de 360 dp (el generador la trata como 4x).
+  image: "branding/splash_provisional.png"
+  # Android 12+ muestra el icono dentro de un círculo: imagen propia que cabe en él.
+  android_12:
+    color: "#FFFFFF"
+    image: "branding/splash_android12.png"
+  android: true
+  ios: true
+  web: false
+  fullscreen: false

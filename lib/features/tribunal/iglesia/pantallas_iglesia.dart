@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/api/cliente_api.dart';
 import '../../../core/router/app_router.dart';
 import '../api_tribunal.dart';
 import '../widgets_tribunal.dart';
@@ -76,6 +77,10 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
   String? _error;
   int _consulta = 0;
 
+  /// Lo indica TEC según el cronograma; TEC vuelve a validarlo al guardar.
+  bool _permiteEdicion = false;
+  final Set<int> _guardando = {};
+
   @override
   void initState() {
     super.initState();
@@ -83,6 +88,64 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
       if (_desplazamiento.position.extentAfter < 300) _cargarMas();
     });
     _reiniciar();
+    _consultarEdicion();
+  }
+
+  Future<void> _consultarEdicion() async {
+    try {
+      final iglesia = await context.read<ApiTribunal>().iglesia();
+      if (mounted) setState(() => _permiteEdicion = iglesia.permiteEdicion);
+    } catch (_) {
+      // Sin el dato no se ofrece editar; la lista se sigue mostrando.
+    }
+  }
+
+  /// Pide confirmación, guarda en TEC y actualiza la fila. Ante un error se informa y la
+  /// fila conserva el valor que tenía.
+  Future<void> _cambiarHabilitacion(Miembro miembro, bool habilitado) async {
+    final confirmado = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(habilitado ? 'Habilitar miembro' : 'Quitar habilitación'),
+        content: Text(habilitado
+            ? '¿Habilitar a ${miembro.nombre} para participar en las elecciones?'
+            : '¿${miembro.nombre} dejará de estar habilitado para participar en las elecciones?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(habilitado ? 'Habilitar' : 'Quitar habilitación'),
+          ),
+        ],
+      ),
+    );
+    if (confirmado != true || !mounted) return;
+    final api = context.read<ApiTribunal>();
+    final mensajes = ScaffoldMessenger.of(context);
+    setState(() => _guardando.add(miembro.id));
+    String aviso;
+    try {
+      final actualizado = await api.cambiarHabilitacion(miembro.id, habilitado);
+      if (!mounted) return;
+      setState(() {
+        final i = _miembros.indexWhere((m) => m.id == miembro.id);
+        if (i >= 0) _miembros[i] = actualizado;
+      });
+      aviso = actualizado.habilitado
+          ? '${actualizado.nombre} quedó habilitado para participar.'
+          : '${actualizado.nombre} quedó como no habilitado.';
+    } on ErrorApi catch (e) {
+      // La fase del cronograma pudo cerrarse mientras la pantalla estaba abierta.
+      if (e.codigo == 'EDICION_CERRADA' && mounted) setState(() => _permiteEdicion = false);
+      aviso = e.mensaje;
+    } catch (e) {
+      aviso = mensajeDeError(e);
+    } finally {
+      if (mounted) setState(() => _guardando.remove(miembro.id));
+    }
+    mensajes
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(aviso)));
   }
 
   @override
@@ -173,6 +236,17 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Align(alignment: Alignment.centerLeft, child: Text('${formatoNumero(_total)} miembros')),
           ),
+          if (!_permiteEdicion)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'La habilitación solo se puede cambiar en la fase del cronograma que lo permite.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
           Expanded(child: _lista()),
         ],
       ),
@@ -204,10 +278,25 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
           return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
         }
         final m = _miembros[i];
-        return ListTile(
-          title: Text(m.nombre),
-          subtitle: Text(m.habilitado ? 'Habilitado para participar' : 'No habilitado'),
-          trailing: m.revisado ? const Tooltip(message: 'Información revisada', child: Icon(Icons.verified_outlined)) : null,
+        final revisado = m.revisado
+            ? const Tooltip(message: 'Información revisada', child: Icon(Icons.verified_outlined, size: 20))
+            : null;
+        if (!_permiteEdicion) {
+          return ListTile(
+            title: Text(m.nombre),
+            subtitle: Text(m.habilitado ? 'Habilitado para participar' : 'No habilitado'),
+            trailing: revisado,
+          );
+        }
+        final guardando = _guardando.contains(m.id);
+        return SwitchListTile(
+          title: Row(children: [
+            Expanded(child: Text(m.nombre)),
+            ?revisado,
+          ]),
+          subtitle: Text(guardando ? 'Guardando…' : (m.habilitado ? 'Habilitado para participar' : 'No habilitado')),
+          value: m.habilitado,
+          onChanged: guardando ? null : (valor) => _cambiarHabilitacion(m, valor),
         );
       },
     );

@@ -1,0 +1,13 @@
+# Icono de la App (provisional: logo TEC). Al recibir el logo oficial de CONPOCIIECH,
+# reemplazar las imágenes de branding/ y ejecutar:
+#   dart run flutter_launcher_icons
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "branding/icono_provisional.png"
+  # Icono adaptativo (Android 8+): fondo blanco y logo dentro de la zona segura.
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "branding/icono_adaptativo_frente.png"
+  # iOS no admite transparencia en el icono.
+  remove_alpha_ios: true
+  min_sdk_android: 21

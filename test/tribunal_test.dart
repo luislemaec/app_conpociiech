@@ -135,6 +135,66 @@ void main() {
     });
   });
 
+  group('Habilitación de miembros', () {
+    testWidgets('pide confirmación, guarda en TEC y actualiza la fila', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      // Miembro 02 está no habilitado (los pares lo están en falso).
+      final fila = find.widgetWithText(SwitchListTile, 'Miembro 02');
+      expect(tester.widget<SwitchListTile>(fila).value, isFalse);
+
+      await tester.tap(fila);
+      await tester.pumpAndSettle();
+      expect(find.text('¿Habilitar a Miembro 02 para participar en las elecciones?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
+      await esperar(tester);
+
+      expect(tester.widget<SwitchListTile>(fila).value, isTrue);
+      expect(find.text('Miembro 02 quedó habilitado para participar.'), findsOneWidget);
+      expect(tec.miembros[1]['habilitado'], isTrue);
+      expect(tec.miembros[1]['revisado'], isTrue);
+    });
+
+    testWidgets('cancelar no envía nada a TEC', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      final fila = find.widgetWithText(SwitchListTile, 'Miembro 01');
+      await tester.tap(fila);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Cancelar'));
+      await esperar(tester);
+      expect(tester.widget<SwitchListTile>(fila).value, isTrue);
+      expect(tec.consultas.where((u) => u.path.endsWith('/habilitacion')), isEmpty);
+    });
+
+    testWidgets('con el cronograma cerrado no se ofrece editar', (tester) async {
+      tec.edicionAbierta = false;
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      expect(find.byType(SwitchListTile), findsNothing);
+      expect(find.textContaining('fase del cronograma'), findsOneWidget);
+    });
+
+    testWidgets('si el cronograma se cierra mientras edita, informa y bloquea', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      tec.edicionAbierta = false;
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 02'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
+      await esperar(tester);
+      expect(find.textContaining('cerrada por el cronograma'), findsWidgets);
+      expect(find.byType(SwitchListTile), findsNothing);
+      expect(tec.miembros[1]['habilitado'], isFalse);
+    });
+
+    test('solo el IglesiaAdmin puede cambiar la habilitación', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('tribunal', 'Clave123');
+      await expectLater(ApiTribunal(tec.api, sesion).cambiarHabilitacion(2, true), throwsA(errorApi('SIN_PERMISO')));
+    });
+  });
+
   group('Tribunal / Administrador', () {
     testWidgets('resumen del proceso', (tester) async {
       await montar(tester, 'tribunal');
