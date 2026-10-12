@@ -84,6 +84,8 @@ void main() {
       expect(find.text('MESA 7'), findsOneWidget);
       expect(find.text('Abierta'), findsOneWidget);
       expect(find.text('Pérez Ana'), findsOneWidget);
+      await tester.scrollUntilVisible(find.text('Los resultados se muestran cuando la mesa está cerrada.'), 200,
+          scrollable: find.byType(Scrollable).first);
       expect(find.text('Los resultados se muestran cuando la mesa está cerrada.'), findsOneWidget);
     });
 
@@ -132,6 +134,56 @@ void main() {
       await esperar(tester);
       expect(ultimaConsultaMiembros().queryParameters['habilitado'], 'false');
       expect(find.text('22 miembros'), findsOneWidget);
+    });
+  });
+
+  group('Pendientes de revisión', () {
+    Uri ultimaConsultaMiembros() => tec.consultas.lastWhere((u) => u.path.endsWith('/miembros'));
+
+    testWidgets('Mi iglesia ofrece ir a los pendientes con su cantidad', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miIglesia);
+      await tester.scrollUntilVisible(find.text('Ver pendientes de revisión (30)'), 200,
+          scrollable: find.byType(Scrollable).first);
+      await tester.tap(find.text('Ver pendientes de revisión (30)'));
+      await esperar(tester);
+      expect(ultimaConsultaMiembros().queryParameters['revisado'], 'false');
+      expect(find.text('30 pendientes de revisión'), findsOneWidget);
+      expect(find.textContaining('Pendiente de revisión'), findsWidgets);
+    });
+
+    testWidgets('el filtro se combina con el de habilitación y se puede quitar', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
+      await tester.tap(find.text('No habilitados'));
+      await esperar(tester);
+      expect(ultimaConsultaMiembros().queryParameters, containsPair('revisado', 'false'));
+      expect(ultimaConsultaMiembros().queryParameters, containsPair('habilitado', 'false'));
+      expect(find.text('15 pendientes de revisión'), findsOneWidget);
+
+      await tester.tap(find.text('Pendientes de revisión'));
+      await esperar(tester);
+      expect(ultimaConsultaMiembros().queryParameters.containsKey('revisado'), isFalse);
+      expect(find.text('22 miembros'), findsOneWidget);
+    });
+
+    testWidgets('cambiar la habilitación de un pendiente lo marca como revisado', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
+      await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 01'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Quitar habilitación'));
+      await esperar(tester);
+      expect(tec.miembros[0]['revisado'], isTrue);
+      expect(find.text('No habilitado'), findsOneWidget, reason: 'la fila ya no dice «Pendiente de revisión»');
+    });
+
+    test('la App pide los pendientes con revisado=false', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('iglesia', 'Clave123');
+      final pagina = await ApiTribunal(tec.api, sesion).miembros(revisado: false);
+      expect(pagina.total, 30);
+      expect(pagina.elementos.every((m) => !m.revisado), isTrue);
     });
   });
 

@@ -19,6 +19,7 @@ class PantallaProceso extends StatelessWidget {
         cargar: api.resumenProceso,
         construir: (context, r) => ContenidoConsulta(
           children: [
+            if (r.alertas.isNotEmpty) _Alertas(r.alertas),
             Seccion(
               titulo: r.proceso.nombre,
               children: [
@@ -55,6 +56,35 @@ class PantallaProceso extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Pendientes del proceso (las alertas del dashboard web). Tocar una abre el avance de mesas.
+class _Alertas extends StatelessWidget {
+  const _Alertas(this.alertas);
+
+  final List<AlertaProceso> alertas;
+
+  @override
+  Widget build(BuildContext context) {
+    final esquema = Theme.of(context).colorScheme;
+    return Seccion(
+      titulo: 'Alertas',
+      children: [
+        for (final a in alertas)
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(
+              a.critica ? Icons.error_outline : Icons.warning_amber_outlined,
+              color: a.critica ? esquema.error : esquema.tertiary,
+              semanticLabel: a.critica ? 'Crítica' : 'Advertencia',
+            ),
+            title: Text(a.texto),
+            trailing: a.cantidad > 0 ? Text(formatoNumero(a.cantidad), style: Theme.of(context).textTheme.titleMedium) : null,
+            onTap: () => context.go(Rutas.avanceMesas),
+          ),
+      ],
     );
   }
 }
@@ -145,6 +175,9 @@ class _PantallaAvanceMesasState extends State<PantallaAvanceMesas> {
                         m.juntaRegistrada ? 'Junta completa' : 'Junta incompleta',
                       ].whereType<String>().where((t) => t.isNotEmpty).join(' · ')),
                       trailing: EtiquetaEstado(m.estado),
+                      onTap: m.ubicacion.mesaId == null
+                          ? null
+                          : () => context.go(Rutas.detalleMesa(m.ubicacion.mesaId!)),
                     );
                   },
                 ),

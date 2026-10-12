@@ -1,6 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Consumo de la API de TEC por HTTPS; en el manifiesto principal para que exista en release. -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Avisos de TEC (Android 13+ los pide al usuario en tiempo de ejecución). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <!-- Sin tráfico HTTP en claro y sin copia de seguridad automática: la sesión se guarda
          cifrada en el dispositivo y no debe restaurarse en otro equipo. -->
     <application

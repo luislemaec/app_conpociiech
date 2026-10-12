@@ -32,6 +32,12 @@ class PantallaMiMesa extends StatelessWidget {
                 if (mesa.fechaApertura != null) Dato('Apertura', formatoFecha(mesa.fechaApertura)),
                 if (mesa.fechaCierre != null) Dato('Cierre', formatoFecha(mesa.fechaCierre)),
                 const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: () => context.go(Rutas.escrutinio),
+                  icon: const Icon(Icons.how_to_vote_outlined),
+                  label: const Text('Escrutinio de la mesa'),
+                ),
+                const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: () => context.go(Rutas.padronMesa),
                   icon: const Icon(Icons.people_outline),

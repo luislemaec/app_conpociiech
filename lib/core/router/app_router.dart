@@ -5,7 +5,9 @@ import '../../features/auth/pantalla_iniciar_sesion.dart';
 import '../../features/inicio/pantalla_inicio.dart';
 import '../../features/tribunal/iglesia/pantallas_iglesia.dart';
 import '../../features/tribunal/pantalla_tribunal.dart';
+import '../../features/tribunal/presidente/pantalla_escrutinio.dart';
 import '../../features/tribunal/presidente/pantallas_presidente.dart';
+import '../../features/tribunal/proceso/pantalla_detalle_mesa.dart';
 import '../../features/tribunal/proceso/pantallas_proceso.dart';
 import '../sesion/roles.dart';
 import '../sesion/sesion_controller.dart';
@@ -19,11 +21,15 @@ abstract final class Rutas {
   static const String tribunal = '/tribunal';
   static const String miMesa = '/tribunal/mesa';
   static const String padronMesa = '/tribunal/mesa/padron';
+  static const String escrutinio = '/tribunal/mesa/escrutinio';
   static const String miIglesia = '/tribunal/iglesia';
   static const String miembrosIglesia = '/tribunal/iglesia/miembros';
   static const String proceso = '/tribunal/proceso';
   static const String avanceMesas = '/tribunal/proceso/mesas';
   static const String resultados = '/tribunal/proceso/resultados';
+
+  /// Detalle de una mesa del proceso (Administrador, Tribunal).
+  static String detalleMesa(int mesaId) => '/tribunal/proceso/mesas/$mesaId';
 
   /// Parámetro con la ruta a la que se vuelve después de iniciar sesión.
   static const String destino = 'destino';
@@ -56,18 +62,37 @@ GoRouter crearRouter(SesionController sesion) {
           GoRoute(
             path: 'mesa',
             builder: (context, estado) => const PantallaMiMesa(),
-            routes: [GoRoute(path: 'padron', builder: (context, estado) => const PantallaPadronMesa())],
+            routes: [
+              GoRoute(path: 'padron', builder: (context, estado) => const PantallaPadronMesa()),
+              GoRoute(path: 'escrutinio', builder: (context, estado) => const PantallaEscrutinio()),
+            ],
           ),
           GoRoute(
             path: 'iglesia',
             builder: (context, estado) => const PantallaMiIglesia(),
-            routes: [GoRoute(path: 'miembros', builder: (context, estado) => const PantallaMiembrosIglesia())],
+            routes: [
+              GoRoute(
+                path: 'miembros',
+                builder: (context, estado) =>
+                    PantallaMiembrosIglesia(soloPendientes: estado.uri.queryParameters['pendientes'] == '1'),
+              ),
+            ],
           ),
           GoRoute(
             path: 'proceso',
             builder: (context, estado) => const PantallaProceso(),
             routes: [
-              GoRoute(path: 'mesas', builder: (context, estado) => const PantallaAvanceMesas()),
+              GoRoute(
+                path: 'mesas',
+                builder: (context, estado) => const PantallaAvanceMesas(),
+                routes: [
+                  GoRoute(
+                    path: ':mesaId',
+                    builder: (context, estado) =>
+                        PantallaDetalleMesa(mesaId: int.tryParse(estado.pathParameters['mesaId'] ?? '') ?? 0),
+                  ),
+                ],
+              ),
               GoRoute(path: 'resultados', builder: (context, estado) => const PantallaResultados()),
             ],
           ),
@@ -113,6 +138,7 @@ String destinoSeguro(String? destino, SesionController sesion) {
     Rutas.tribunal,
     Rutas.miMesa,
     Rutas.padronMesa,
+    Rutas.escrutinio,
     Rutas.miIglesia,
     Rutas.miembrosIglesia,
     Rutas.proceso,

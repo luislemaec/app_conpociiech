@@ -52,21 +52,53 @@ class ClienteApi {
     return json is List<dynamic> ? json : const [];
   }
 
+  /// Envía un archivo binario (p. ej. la foto del acta) y devuelve el JSON de la respuesta.
+  /// Usa un tiempo de espera mayor: la subida puede tardar con datos móviles.
+  Future<Map<String, dynamic>?> enviarArchivo(String metodo, String ruta, List<int> contenido,
+      {required String tipo, String? token, Duration espera = const Duration(seconds: 120)}) async {
+    final json = await _enviar(metodo, ruta, token: token, binario: contenido, tipoBinario: tipo, espera: espera);
+    return json is Map<String, dynamic> ? json : null;
+  }
+
+  /// Descarga un archivo (p. ej. la foto del acta). Los errores llegan en JSON como siempre.
+  Future<List<int>> obtenerArchivo(String ruta,
+      {String? token, Duration espera = const Duration(seconds: 120)}) async {
+    final respuesta = await _peticion('GET', ruta, token: token, espera: espera, acepta: '*/*');
+    return respuesta.bodyBytes;
+  }
+
   /// [ruta] es relativa a la URL base y puede llevar parámetros (`/x?pagina=0`).
-  Future<Object?> _enviar(String metodo, String ruta, {Object? cuerpo, String? token}) async {
+  Future<Object?> _enviar(String metodo, String ruta,
+      {Object? cuerpo, String? token, List<int>? binario, String? tipoBinario, Duration? espera}) async {
+    final respuesta = await _peticion(metodo, ruta,
+        cuerpo: cuerpo, token: token, binario: binario, tipoBinario: tipoBinario, espera: espera);
+    return _json(respuesta);
+  }
+
+  /// Envía la petición y devuelve la respuesta si fue exitosa; si no, lanza [ErrorApi].
+  Future<http.Response> _peticion(String metodo, String ruta,
+      {Object? cuerpo,
+      String? token,
+      List<int>? binario,
+      String? tipoBinario,
+      Duration? espera,
+      String acepta = 'application/json'}) async {
     final relativa = Uri.parse(ruta);
     final url = _base.replace(path: '${_base.path}${relativa.path}', query: relativa.hasQuery ? relativa.query : null);
     final peticion = http.Request(metodo, url)
-      ..headers['Accept'] = 'application/json';
+      ..headers['Accept'] = acepta;
     if (token != null) peticion.headers['Authorization'] = 'Bearer $token';
-    if (cuerpo != null) {
+    if (binario != null) {
+      peticion.headers['Content-Type'] = tipoBinario ?? 'application/octet-stream';
+      peticion.bodyBytes = binario;
+    } else if (cuerpo != null) {
       peticion.headers['Content-Type'] = 'application/json; charset=utf-8';
       peticion.body = jsonEncode(cuerpo);
     }
 
     final http.Response respuesta;
     try {
-      respuesta = await http.Response.fromStream(await _cliente.send(peticion).timeout(tiempoMaximo));
+      respuesta = await http.Response.fromStream(await _cliente.send(peticion).timeout(espera ?? tiempoMaximo));
     } on TimeoutException {
       throw const SinConexion();
     } on http.ClientException {
@@ -75,8 +107,8 @@ class ClienteApi {
       throw const SinConexion();
     }
 
+    if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) return respuesta;
     final json = _json(respuesta);
-    if (respuesta.statusCode >= 200 && respuesta.statusCode < 300) return json;
     final error = json is Map<String, dynamic> ? json : null;
     throw ErrorApi(
       respuesta.statusCode,

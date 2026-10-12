@@ -41,6 +41,14 @@ class PantallaMiIglesia extends StatelessWidget {
                   'También en otra iglesia': formatoNumero(iglesia.enOtraIglesia),
                 }),
                 const SizedBox(height: 16),
+                if (iglesia.pendientesRevision > 0) ...[
+                  FilledButton.icon(
+                    onPressed: () => context.go('${Rutas.miembrosIglesia}?pendientes=1'),
+                    icon: const Icon(Icons.pending_actions_outlined),
+                    label: Text('Ver pendientes de revisión (${formatoNumero(iglesia.pendientesRevision)})'),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 OutlinedButton.icon(
                   onPressed: () => context.go(Rutas.miembrosIglesia),
                   icon: const Icon(Icons.people_outline),
@@ -57,7 +65,10 @@ class PantallaMiIglesia extends StatelessWidget {
 
 /// Miembros de la iglesia, por páginas, con búsqueda y filtro de habilitación.
 class PantallaMiembrosIglesia extends StatefulWidget {
-  const PantallaMiembrosIglesia({super.key});
+  const PantallaMiembrosIglesia({super.key, this.soloPendientes = false});
+
+  /// Abre la lista filtrada en los miembros pendientes de revisión.
+  final bool soloPendientes;
 
   @override
   State<PantallaMiembrosIglesia> createState() => _PantallaMiembrosIglesiaState();
@@ -71,6 +82,9 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
   Timer? _espera;
   String _busqueda = '';
   bool? _habilitado;
+
+  /// Solo los pendientes de revisión (en TEC: `revisado = false`).
+  late bool _soloPendientes = widget.soloPendientes;
   int _total = 0;
   int _pagina = 0;
   bool _cargando = false;
@@ -174,7 +188,12 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
     try {
       final pagina = await context
           .read<ApiTribunal>()
-          .miembros(busqueda: _busqueda, habilitado: _habilitado, pagina: _pagina, tamano: _tamano);
+          .miembros(
+              busqueda: _busqueda,
+              habilitado: _habilitado,
+              revisado: _soloPendientes ? false : null,
+              pagina: _pagina,
+              tamano: _tamano);
       if (!mounted || consulta != _consulta) return;
       setState(() {
         _miembros.addAll(pagina.elementos);
@@ -229,13 +248,39 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
                       },
                     ),
                   ),
+                // Se combina con el filtro de habilitación (p. ej. no habilitados sin revisar).
+                FilterChip(
+                  label: const Text('Pendientes de revisión'),
+                  selected: _soloPendientes,
+                  onSelected: (valor) {
+                    _soloPendientes = valor;
+                    _reiniciar();
+                  },
+                ),
               ],
             ),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-            child: Align(alignment: Alignment.centerLeft, child: Text('${formatoNumero(_total)} miembros')),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(_soloPendientes
+                  ? '${formatoNumero(_total)} pendientes de revisión'
+                  : '${formatoNumero(_total)} miembros'),
+            ),
           ),
+          if (_soloPendientes && _permiteEdicion)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Cambiar la habilitación de un miembro lo marca como revisado. '
+                  'Para revisar o corregir sus datos personales use la web.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
           if (!_permiteEdicion)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
@@ -281,12 +326,12 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
         final revisado = m.revisado
             ? const Tooltip(message: 'Información revisada', child: Icon(Icons.verified_outlined, size: 20))
             : null;
+        final estado = [
+          m.habilitado ? 'Habilitado para participar' : 'No habilitado',
+          if (!m.revisado) 'Pendiente de revisión',
+        ].join(' · ');
         if (!_permiteEdicion) {
-          return ListTile(
-            title: Text(m.nombre),
-            subtitle: Text(m.habilitado ? 'Habilitado para participar' : 'No habilitado'),
-            trailing: revisado,
-          );
+          return ListTile(title: Text(m.nombre), subtitle: Text(estado), trailing: revisado);
         }
         final guardando = _guardando.contains(m.id);
         return SwitchListTile(
@@ -294,7 +339,7 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
             Expanded(child: Text(m.nombre)),
             ?revisado,
           ]),
-          subtitle: Text(guardando ? 'Guardando…' : (m.habilitado ? 'Habilitado para participar' : 'No habilitado')),
+          subtitle: Text(guardando ? 'Guardando…' : estado),
           value: m.habilitado,
           onChanged: guardando ? null : (valor) => _cambiarHabilitacion(m, valor),
         );

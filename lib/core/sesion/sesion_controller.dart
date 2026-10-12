@@ -95,9 +95,24 @@ class SesionController extends ChangeNotifier {
   }
 
   /// Cierre por el usuario: borra lo local y revoca en TEC si hay conexión.
+  final List<Future<void> Function()> _accionesAlCerrar = [];
+
+  /// Registra una acción que necesita la sesión vigente justo antes de que el usuario la
+  /// cierre. No se ejecuta en los cierres automáticos (la sesión ya no es válida en TEC).
+  void alCerrarSesion(Future<void> Function() accion) => _accionesAlCerrar.add(accion);
+
   Future<void> cerrar() async {
     final sesion = _sesion;
     if (sesion == null) return;
+    // Con la sesión aún vigente (p. ej. dar de baja el dispositivo para avisos push). Son
+    // de mejor esfuerzo: un error o la falta de red no impiden cerrar la sesión.
+    for (final accion in List.of(_accionesAlCerrar)) {
+      try {
+        await accion().timeout(const Duration(seconds: 5));
+      } catch (_) {
+        // Se ignora: el cierre local siempre se completa.
+      }
+    }
     await _limpiar();
     try {
       await _api.cerrarSesion(sesion.accessToken);

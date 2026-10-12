@@ -4,6 +4,10 @@
 	<dict>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
+		<key>NSCameraUsageDescription</key>
+		<string>La cámara se usa para fotografiar el acta física firmada de la mesa.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Permite elegir la foto del acta física firmada de la mesa.</string>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
