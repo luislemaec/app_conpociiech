@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/estructura_adaptativa.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/router/app_router.dart';
 import '../api_tribunal.dart';
 import '../widgets_tribunal.dart';
+import '../../../shared/widgets/estados_app.dart';
 
 /// Mesa asignada al Presidente en el proceso activo (por su designación JRV).
 class PantallaMiMesa extends StatelessWidget {
@@ -13,7 +15,7 @@ class PantallaMiMesa extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = context.read<ApiTribunal>();
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Mi mesa')),
       body: VistaConsulta<MesaPresidente>(
         cargar: api.mesaPresidente,
@@ -22,15 +24,20 @@ class PantallaMiMesa extends StatelessWidget {
             Seccion(
               titulo: mesa.ubicacion.mesa,
               children: [
-                Align(alignment: Alignment.centerLeft, child: EtiquetaEstado(mesa.estado)),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: EtiquetaEstado(mesa.estado),
+                ),
                 const SizedBox(height: 12),
                 Dato('Proceso', mesa.proceso.nombre),
                 Dato('Fase vigente', mesa.proceso.faseVigente),
                 Dato('Recinto', mesa.ubicacion.recinto),
                 Dato('Ubicación', mesa.ubicacion.lugar),
                 Dato('Electores', formatoNumero(mesa.electores)),
-                if (mesa.fechaApertura != null) Dato('Apertura', formatoFecha(mesa.fechaApertura)),
-                if (mesa.fechaCierre != null) Dato('Cierre', formatoFecha(mesa.fechaCierre)),
+                if (mesa.fechaApertura != null)
+                  Dato('Apertura', formatoFecha(mesa.fechaApertura)),
+                if (mesa.fechaCierre != null)
+                  Dato('Cierre', formatoFecha(mesa.fechaCierre)),
                 const SizedBox(height: 8),
                 FilledButton.icon(
                   onPressed: () => context.go(Rutas.escrutinio),
@@ -48,8 +55,10 @@ class PantallaMiMesa extends StatelessWidget {
             Seccion(
               titulo: 'Junta Receptora del Voto',
               children: [
-                if (mesa.junta.isEmpty) const Text('Aún no hay miembros designados.'),
-                for (final m in mesa.junta) Dato(m.cargo ?? 'Miembro', m.nombre),
+                if (mesa.junta.isEmpty)
+                  const Text('Aún no hay miembros designados.'),
+                for (final m in mesa.junta)
+                  Dato(m.cargo ?? 'Miembro', m.nombre),
               ],
             ),
             if (mesa.resultados case final r?)
@@ -64,13 +73,18 @@ class PantallaMiMesa extends StatelessWidget {
                     'Nulos': formatoNumero(r.votosNulos),
                   }),
                   const SizedBox(height: 12),
-                  for (final c in r.categorias) Dato(c.categoria, formatoNumero(c.votos)),
+                  for (final c in r.categorias)
+                    Dato(c.categoria, formatoNumero(c.votos)),
                 ],
               )
             else
               const Seccion(
                 titulo: 'Resultados de la mesa',
-                children: [Text('Los resultados se muestran cuando la mesa está cerrada.')],
+                children: [
+                  Text(
+                    'Los resultados se muestran cuando la mesa está cerrada.',
+                  ),
+                ],
               ),
           ],
         ),
@@ -93,7 +107,7 @@ class _PantallaPadronMesaState extends State<PantallaPadronMesa> {
   @override
   Widget build(BuildContext context) {
     final api = context.read<ApiTribunal>();
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Padrón de la mesa')),
       body: VistaConsulta<List<Elector>>(
         cargar: api.padronPresidente,
@@ -102,14 +116,21 @@ class _PantallaPadronMesaState extends State<PantallaPadronMesa> {
           final visibles = f.isEmpty
               ? electores
               : electores
-                  .where((e) => e.nombre.toLowerCase().contains(f) || (e.iglesia?.toLowerCase().contains(f) ?? false))
-                  .toList();
+                    .where(
+                      (e) =>
+                          e.nombre.toLowerCase().contains(f) ||
+                          (e.iglesia?.toLowerCase().contains(f) ?? false),
+                    )
+                    .toList();
           return Column(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: TextField(
-                  decoration: const InputDecoration(labelText: 'Buscar por nombre o iglesia', prefixIcon: Icon(Icons.search)),
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar por nombre o iglesia',
+                    prefixIcon: Icon(Icons.search),
+                  ),
                   onChanged: (v) => setState(() => _filtro = v.trim()),
                 ),
               ),
@@ -117,25 +138,37 @@ class _PantallaPadronMesaState extends State<PantallaPadronMesa> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('${formatoNumero(visibles.length)} de ${formatoNumero(electores.length)} electores'),
+                  child: Text(
+                    '${formatoNumero(visibles.length)} de ${formatoNumero(electores.length)} electores',
+                  ),
                 ),
               ),
               Expanded(
-                child: ListView.separated(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  itemCount: visibles.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (context, i) {
-                    final e = visibles[i];
-                    return ListTile(
-                      title: Text(e.nombre),
-                      subtitle: e.iglesia == null ? null : Text(e.iglesia!),
-                      trailing: e.sufrago == true
-                          ? const Tooltip(message: 'Sufragó', child: Icon(Icons.how_to_vote))
-                          : null,
-                    );
-                  },
-                ),
+                child: visibles.isEmpty
+                    ? const EstadoVacio(
+                        mensaje:
+                            'No hay resultados para los filtros seleccionados.',
+                      )
+                    : ListView.separated(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        itemCount: visibles.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, i) {
+                          final e = visibles[i];
+                          return ListTile(
+                            title: Text(e.nombre),
+                            subtitle: e.iglesia == null
+                                ? null
+                                : Text(e.iglesia!),
+                            trailing: e.sufrago == true
+                                ? const Tooltip(
+                                    message: 'Sufragó',
+                                    child: Icon(Icons.how_to_vote),
+                                  )
+                                : null,
+                          );
+                        },
+                      ),
               ),
             ],
           );

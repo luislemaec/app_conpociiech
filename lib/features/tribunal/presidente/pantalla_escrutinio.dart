@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/estructura_adaptativa.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/api/cliente_api.dart';
 import '../api_tribunal.dart';
+import 'guia_escrutinio.dart';
+import '../../../shared/widgets/estados_app.dart';
 import '../widgets_tribunal.dart';
 
 /// Obtiene la foto del acta (JPEG) desde la cámara o la galería; `null` si se cancela.
@@ -12,14 +15,22 @@ typedef SelectorFoto = Future<List<int>?> Function(ImageSource origen);
 
 /// Selector real: re-codifica a JPEG (calidad 85, máx. 2400 px) para cumplir el límite de TEC.
 Future<List<int>?> seleccionarFotoActa(ImageSource origen) async {
-  final foto = await ImagePicker().pickImage(source: origen, imageQuality: 85, maxWidth: 2400, maxHeight: 2400);
+  final foto = await ImagePicker().pickImage(
+    source: origen,
+    imageQuality: 85,
+    maxWidth: 2400,
+    maxHeight: 2400,
+  );
   return foto == null ? null : await foto.readAsBytes();
 }
 
 /// Escrutinio de la mesa del Presidente: apertura, conteo, cierre y foto del acta física.
 /// Solo en línea: cada paso se guarda en TEC, que valida de nuevo todas las reglas.
 class PantallaEscrutinio extends StatefulWidget {
-  const PantallaEscrutinio({super.key, this.selectorFoto = seleccionarFotoActa});
+  const PantallaEscrutinio({
+    super.key,
+    this.selectorFoto = seleccionarFotoActa,
+  });
 
   final SelectorFoto selectorFoto;
 
@@ -67,7 +78,8 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
       _acta = acta;
       _modificado = false;
       for (final c in acta.categorias) {
-        (_campos[c.categoriaId] ??= TextEditingController()).text = '${c.votos}';
+        (_campos[c.categoriaId] ??= TextEditingController()).text =
+            '${c.votos}';
       }
     });
   }
@@ -96,11 +108,18 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
         emitidos += votos[c.categoriaId]!;
       }
     }
-    return (emitidos: emitidos, papeletas: papeletas, cuadre: acta.sufragantes - emitidos - papeletas);
+    return (
+      emitidos: emitidos,
+      papeletas: papeletas,
+      cuadre: acta.sufragantes - emitidos - papeletas,
+    );
   }
 
   /// Ejecuta un paso en TEC, muestra el resultado y refresca el acta.
-  Future<void> _ejecutar(Future<ActaPresidente> Function(ApiTribunal api) paso, String exito) async {
+  Future<void> _ejecutar(
+    Future<ActaPresidente> Function(ApiTribunal api) paso,
+    String exito,
+  ) async {
     final api = context.read<ApiTribunal>();
     final mensajes = ScaffoldMessenger.of(context);
     setState(() => _procesando = true);
@@ -130,18 +149,31 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
           title: Text(titulo),
           content: Text(texto),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(accion)),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: Text(accion),
+            ),
           ],
         ),
       ) ==
       true;
 
   Future<void> _abrir() async {
-    if (!await _confirmar('Registrar apertura', '¿Registrar la apertura de la mesa ahora?', 'Registrar apertura')) {
+    if (!await _confirmar(
+      'Registrar apertura',
+      '¿Registrar la apertura de la mesa ahora?',
+      'Registrar apertura',
+    )) {
       return;
     }
-    await _ejecutar((api) => api.abrirMesa(_observacion.text), 'Apertura de la mesa registrada.');
+    await _ejecutar(
+      (api) => api.abrirMesa(_observacion.text),
+      'Apertura de la mesa registrada.',
+    );
   }
 
   Future<void> _guardar() async {
@@ -158,13 +190,17 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
         ? 'Las papeletas cuadran con los sufragantes.'
         : 'Atención: el cuadre de papeletas es ${totales.cuadre} (debería ser 0).';
     if (!await _confirmar(
-        'Cerrar la mesa',
-        'Votos emitidos: ${totales.emitidos}. Papeletas no utilizadas: ${totales.papeletas}. $aviso\n\n'
-            'Después de cerrar, el conteo ya no se puede modificar.',
-        'Cerrar mesa')) {
+      'Cerrar la mesa',
+      'Votos emitidos: ${totales.emitidos}. Papeletas no utilizadas: ${totales.papeletas}. $aviso\n\n'
+          'Después de cerrar, el conteo ya no se puede modificar.',
+      'Cerrar mesa',
+    )) {
       return;
     }
-    await _ejecutar((api) => api.cerrarMesa(votos), 'Mesa cerrada. Suba la foto del acta física firmada.');
+    await _ejecutar(
+      (api) => api.cerrarMesa(votos),
+      'Mesa cerrada. Suba la foto del acta física firmada.',
+    );
   }
 
   Future<void> _subirFoto(ImageSource origen) async {
@@ -173,84 +209,99 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
     try {
       foto = await widget.selectorFoto(origen);
     } catch (_) {
-      _avisar(mensajes, 'No se pudo obtener la foto. Revise los permisos de la cámara.');
+      _avisar(
+        mensajes,
+        'No se pudo obtener la foto. Revise los permisos de la cámara.',
+      );
       return;
     }
     if (foto == null || !mounted) return;
-    if (foto.length < 3 || foto[0] != 0xFF || foto[1] != 0xD8 || foto[2] != 0xFF) {
+    if (foto.length < 3 ||
+        foto[0] != 0xFF ||
+        foto[1] != 0xD8 ||
+        foto[2] != 0xFF) {
       _avisar(mensajes, 'La foto debe estar en formato JPEG.');
       return;
     }
     if (foto.length > _tamanoMaximo) {
-      _avisar(mensajes, 'La foto supera los 10 MB. Tómela con menos resolución.');
+      _avisar(
+        mensajes,
+        'La foto supera los 10 MB. Tómela con menos resolución.',
+      );
       return;
     }
-    await _ejecutar((api) => api.subirActaFisica(foto!), 'Foto del acta enviada para revisión del Tribunal.');
+    await _ejecutar(
+      (api) => api.subirActaFisica(foto!),
+      'Foto del acta enviada para revisión del Tribunal.',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final acta = _acta;
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Escrutinio de la mesa')),
       body: acta == null
-          ? Center(
-              child: _error == null
-                  ? const CircularProgressIndicator()
-                  : Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(mainAxisSize: MainAxisSize.min, children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _cargar, child: const Text('Reintentar')),
-                      ]),
-                    ),
-            )
+          ? (_error == null
+                ? const EstadoCarga()
+                : EstadoError(mensaje: _error!, reintentar: _cargar))
           : AbsorbPointer(
               absorbing: _procesando,
               child: RefreshIndicator(
                 onRefresh: _cargar,
-                child: ContenidoConsulta(children: [
-                  if (_procesando) const LinearProgressIndicator(),
-                  _cabecera(acta),
-                  if (acta.estado == 'PENDIENTE') _apertura(acta),
-                  if (acta.estado != 'PENDIENTE') _conteo(acta),
-                  if (acta.cerrada) _actaFisica(acta),
-                ]),
+                child: ContenidoConsulta(
+                  children: [
+                    if (_error != null)
+                      EstadoError(mensaje: _error!, reintentar: _cargar),
+                    if (_procesando) const LinearProgressIndicator(),
+                    _cabecera(acta),
+                    GuiaEscrutinio(acta: acta, modificado: _modificado),
+                    if (acta.estado == 'PENDIENTE') _apertura(acta),
+                    if (acta.estado != 'PENDIENTE') _conteo(acta),
+                    if (acta.cerrada) _actaFisica(acta),
+                  ],
+                ),
               ),
             ),
     );
   }
 
   Widget _cabecera(ActaPresidente acta) => Seccion(
-        titulo: acta.ubicacion.mesa,
-        children: [
-          Align(alignment: Alignment.centerLeft, child: EtiquetaEstado(acta.estado)),
-          const SizedBox(height: 12),
-          Dato('Recinto', acta.ubicacion.recinto),
-          Dato('Sufragantes', formatoNumero(acta.sufragantes)),
-        ],
-      );
+    titulo: acta.ubicacion.mesa,
+    children: [
+      Align(
+        alignment: Alignment.centerLeft,
+        child: EtiquetaEstado(acta.estado),
+      ),
+      const SizedBox(height: 12),
+      Dato('Recinto', acta.ubicacion.recinto),
+      Dato('Sufragantes', formatoNumero(acta.sufragantes)),
+    ],
+  );
 
   Widget _apertura(ActaPresidente acta) => Seccion(
-        titulo: 'Apertura',
-        children: [
-          if (acta.puedeAbrir) ...[
-            TextField(
-              controller: _observacion,
-              maxLength: 500,
-              decoration: const InputDecoration(labelText: 'Observación (opcional)'),
-            ),
-            const SizedBox(height: 8),
-            FilledButton.icon(
-              onPressed: _abrir,
-              icon: const Icon(Icons.lock_open),
-              label: const Text('Registrar apertura'),
-            ),
-          ] else
-            Text(acta.motivoBloqueoApertura ?? 'La mesa todavía no se puede abrir.'),
-        ],
-      );
+    titulo: 'Apertura',
+    children: [
+      if (acta.puedeAbrir) ...[
+        TextField(
+          controller: _observacion,
+          maxLength: 500,
+          decoration: const InputDecoration(
+            labelText: 'Observación (opcional)',
+          ),
+        ),
+        const SizedBox(height: 8),
+        FilledButton.icon(
+          onPressed: _abrir,
+          icon: const Icon(Icons.lock_open),
+          label: const Text('Registrar apertura'),
+        ),
+      ] else
+        Text(
+          acta.motivoBloqueoApertura ?? 'La mesa todavía no se puede abrir.',
+        ),
+    ],
+  );
 
   Widget _conteo(ActaPresidente acta) {
     final totales = _totales;
@@ -267,20 +318,35 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
               controller: _campos[c.categoriaId],
               enabled: editable,
               keyboardType: TextInputType.number,
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(6)],
-              decoration: InputDecoration(labelText: c.nombre, helperText: c.papeletas ? 'No cuenta como voto' : null),
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(6),
+              ],
+              decoration: InputDecoration(
+                labelText: c.nombre,
+                helperText: c.papeletas ? 'No cuenta como voto' : null,
+              ),
               onChanged: (_) => setState(() => _modificado = true),
             ),
           ),
         const Divider(),
         if (totales == null)
-          Text('Ingrese un número en cada categoría.', style: TextStyle(color: tema.colorScheme.error))
+          Text(
+            'Ingrese un número en cada categoría.',
+            style: TextStyle(color: tema.colorScheme.error),
+          )
         else ...[
           Dato('Votos emitidos', formatoNumero(totales.emitidos)),
           Dato('Papeletas no utilizadas', formatoNumero(totales.papeletas)),
-          Dato('Cuadre', totales.cuadre == 0 ? '0 (cuadrado)' : '${totales.cuadre} (no cuadra)'),
+          Dato(
+            'Cuadre',
+            totales.cuadre == 0
+                ? '0 (cuadrado)'
+                : '${totales.cuadre} (no cuadra)',
+          ),
         ],
-        if (acta.observacionConteo != null && acta.observacionConteo!.isNotEmpty) ...[
+        if (acta.observacionConteo != null &&
+            acta.observacionConteo!.isNotEmpty) ...[
           const SizedBox(height: 4),
           Text(acta.observacionConteo!, style: tema.textTheme.bodySmall),
         ],
@@ -293,14 +359,19 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: acta.puedeCerrar && !_modificado && totales != null ? _cerrar : null,
+            onPressed: acta.puedeCerrar && !_modificado && totales != null
+                ? _cerrar
+                : null,
             icon: const Icon(Icons.lock_outline),
             label: const Text('Cerrar mesa'),
           ),
           if (_modificado)
             Padding(
               padding: const EdgeInsets.only(top: 8),
-              child: Text('Guarde el conteo antes de cerrar la mesa.', style: tema.textTheme.bodySmall),
+              child: Text(
+                'Guarde el conteo antes de cerrar la mesa.',
+                style: tema.textTheme.bodySmall,
+              ),
             ),
         ],
       ],
@@ -308,28 +379,33 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
   }
 
   Widget _actaFisica(ActaPresidente acta) => Seccion(
-        titulo: 'Acta física',
-        children: [
-          if (acta.actaFisica case final a?) ...[
-            Dato('Estado', a.etiqueta),
-            if (a.version != null) Dato('Versión', '${a.version}'),
-            if (a.observacion != null && a.observacion!.isNotEmpty) Dato('Observación', a.observacion),
-          ] else
-            const Text('Aún no se ha enviado la foto del acta firmada.'),
-          if (acta.puedeSubirActaFisica) ...[
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: () => _subirFoto(ImageSource.camera),
-              icon: const Icon(Icons.photo_camera_outlined),
-              label: Text(acta.actaFisica == null ? 'Tomar foto del acta' : 'Enviar otra foto'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton.icon(
-              onPressed: () => _subirFoto(ImageSource.gallery),
-              icon: const Icon(Icons.photo_library_outlined),
-              label: const Text('Elegir de la galería'),
-            ),
-          ],
-        ],
-      );
+    titulo: 'Acta física',
+    children: [
+      if (acta.actaFisica case final a?) ...[
+        Dato('Estado', a.etiqueta),
+        if (a.version != null) Dato('Versión', '${a.version}'),
+        if (a.observacion != null && a.observacion!.isNotEmpty)
+          Dato('Observación', a.observacion),
+      ] else
+        const Text('Aún no se ha enviado la foto del acta firmada.'),
+      if (acta.puedeSubirActaFisica) ...[
+        const SizedBox(height: 12),
+        FilledButton.icon(
+          onPressed: () => _subirFoto(ImageSource.camera),
+          icon: const Icon(Icons.photo_camera_outlined),
+          label: Text(
+            acta.actaFisica == null
+                ? 'Tomar foto del acta'
+                : 'Enviar otra foto',
+          ),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => _subirFoto(ImageSource.gallery),
+          icon: const Icon(Icons.photo_library_outlined),
+          label: const Text('Elegir de la galería'),
+        ),
+      ],
+    ],
+  );
 }

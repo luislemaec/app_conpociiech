@@ -59,8 +59,12 @@ lib/
       proveedor_push.dart       Firebase Cloud Messaging (o inactivo si no está configurado)
       controlador_push.dart     Registro del dispositivo en TEC y avisos recibidos/tocados
   shared/                       Reutilizable por cualquier módulo
-    tema/                       Colores y tipografía del tema Tribunal (Montserrat)
-    widgets/                    Logo institucional
+    tema/                       Tema Material 3, colores, Montserrat y tokens responsive
+      diseno_app.dart           Espaciado, radios, breakpoints y ancho máximo de contenido
+    widgets/                    Logo, encabezado, estados y estructura adaptativa
+      estructura_adaptativa.dart NavigationBar / NavigationRail según ancho y roles
+      estados_app.dart          Carga, vacío y error con reintento
+      cabecera_app.dart         Encabezado reutilizable
   features/                     Un directorio por módulo
     inicio/                     Área pública
     auth/                       Inicio de sesión y cambio de clave
@@ -69,6 +73,7 @@ lib/
       widgets_tribunal.dart     Carga con reintento, secciones, indicadores, estados
       pantalla_tribunal.dart    Panel: secciones según los roles del usuario
       presidente/               Mi mesa, padrón y escrutinio (Presidente de mesa)
+        guia_escrutinio.dart     Guía del flujo y aviso de cambios pendientes de guardar
       iglesia/                  Mi iglesia, miembros y habilitación (IglesiaAdmin)
       proceso/                  Resumen, alertas, avance, detalle de mesa, revisión de actas
                                 y resultados (Tribunal y Administrador)
@@ -80,9 +85,11 @@ test/
   escrutinio_test.dart          Apertura, conteo, cierre y foto del acta
   revision_acta_test.dart       Alertas, detalle de mesa y revisión del acta
   push_test.dart                Registro del dispositivo y avisos
+  responsive_test.dart          Pantallas, navegación y layout en seis anchos y dos escalas de texto
 branding/                       Fuentes del icono y del splash (no se empaquetan)
 assets/                         Logo y fuentes Montserrat empaquetados
 docs/release-android.md         Firma, versionado, App Bundle y Google Play
+docs/modernizacion-ui.md        Auditoría UI, componentes, validación y pendientes de TEC
 ```
 
 **Dependencias principales:** `provider` (estado), `go_router` (navegación con guardas),
@@ -156,6 +163,10 @@ sequenceDiagram
 Un usuario con varios roles ve la **unión** de sus secciones. Los destinos tras iniciar
 sesión o al tocar un aviso solo aceptan rutas internas conocidas (`destinoSeguro`).
 
+En las pantallas electorales, `EstructuraAdaptativa` presenta `NavigationBar` en teléfonos
+y `NavigationRail` desde 600 px. Solo incluye las secciones disponibles para los roles de
+la sesión; las guardas y la autorización de TEC siguen aplicándose a cada destino.
+
 ---
 
 ## 5. Funcionalidades por rol
@@ -176,6 +187,7 @@ Superadministrador) pueden iniciar sesión pero no ven el módulo, y TEC los rec
 ### IglesiaAdmin — «Mi iglesia»
 - Datos de su iglesia y resumen de miembros (habilitados, información completa,
   pendientes de revisión, también en otra iglesia).
+- Indicador **Habilitados / Total**, conservando la terminología funcional de TEC.
 - Miembros por páginas, con búsqueda y filtros de habilitación y **pendientes de revisión**.
 - **Habilitación para participar:** interruptor con confirmación, solo en la fase del
   cronograma que lo permite; el cambio marca al miembro como revisado, igual que la web.
@@ -246,6 +258,7 @@ flutter build appbundle --release \
 
 ```bash
 flutter pub get
+dart format lib test
 flutter analyze
 flutter test
 flutter run
@@ -264,6 +277,19 @@ El dispositivo o emulador debe resolver `tribunal.local` y confiar en su certifi
 del contrato (roles, rotación del refresh, sesión restringida, transiciones del escrutinio,
 revisión del acta). No necesitan red ni TEC.
 
+**Última validación de la modernización UI (12 de octubre de 2026):**
+
+- `flutter analyze`: sin incidencias.
+- `flutter test`: **89 pruebas aprobadas**.
+- Layout y navegación comprobados a **360, 390, 430, 600, 768 y 1024 px**, con escalado
+  de texto de **1 y 1,5**; tablets y pantallas grandes con 600 px de alto.
+- `git diff --check`: sin problemas de espacios.
+
+Se usa `dart format lib test` para evitar recorrer artefactos generados: en esta validación,
+`dart format .` falló al acceder a una ruta de Firebase dentro de `build/`.
+Las pruebas utilizan TEC simulado; no acreditan integración con producción ni sustituyen
+la revisión visual y de accesibilidad en dispositivos reales.
+
 **APK:**
 
 ```bash
@@ -276,10 +302,24 @@ el build falla a propósito). Pasos completos en [docs/release-android.md](docs/
 
 ---
 
-## 9. Identidad
+## 9. Identidad y sistema de diseño
 
 - Tema Tribunal de TEC (`shared/tema/`): azul institucional `#034EA2` y Montserrat
   400/500/700 (licencia OFL en `assets/fonts/OFL.txt`).
+- **Material 3:** `TemaApp` centraliza esquema de color, tipografía, campos, botones,
+  tarjetas, diálogos, navegación y mensajes. El azul se usa para acciones y acentos,
+  con superficies neutras para el contenido.
+- **Medidas compartidas:** `DisenoApp` define espaciado de 4/8/16/24/32/48 px,
+  radios, breakpoints de 600/1024 px y ancho máximo de contenido de 1120 px.
+- **Componentes reutilizables:** encabezado, estructura adaptativa y estados de carga,
+  error con reintento y vacío; las consultas electorales reutilizan `VistaConsulta`,
+  `Seccion`, `Dato`, `Indicadores` y `EtiquetaEstado`.
+- **Pantallas actualizadas:** Login, Inicio, Tribunal, Mi Iglesia, Miembros, Mi Mesa,
+  Padrón, Escrutinio, Proceso, Avance de mesas, Detalle/revisión de actas y Resultados.
+  Los filtros de miembros se distribuyen en varias líneas y la guía del escrutinio
+  identifica cambios pendientes de guardar y el cierre de la mesa.
+- No se agregaron dependencias ni se modificaron endpoints, modelos, autenticación,
+  tokens, permisos, guardas o reglas electorales durante la modernización.
 - **Provisional con el logo TEC:** `assets/branding/logo_tec_provisional.png`, icono y
   splash (fuentes en `branding/`, configuración en `flutter_launcher_icons.yaml` y
   `flutter_native_splash.yaml`). Con el logo oficial de CONPOCIIECH, reemplazar esas
@@ -289,6 +329,21 @@ el build falla a propósito). Pasos completos en [docs/release-android.md](docs/
 dart run flutter_launcher_icons
 dart run flutter_native_splash:create
 ```
+
+La auditoría, los archivos modificados y los límites de la validación están documentados
+en [docs/modernizacion-ui.md](docs/modernizacion-ui.md).
+
+### Indicadores de preparación electoral
+
+Se presentan únicamente datos disponibles en los contratos actuales de TEC: fase,
+iglesias, recintos, mesas, electores, juntas completas, mesas cerradas, alertas y resumen
+de miembros de la iglesia asignada. Los estados de mesa y acta mantienen sus significados
+propios; una junta completa no se interpreta automáticamente como una mesa lista.
+
+**REQUIERE ENDPOINT / CAMBIO EN TEC:** iglesias sin administrador, administradores
+pendientes de activar o sin acceso reciente, habilitación y revisión consolidadas de
+todas las iglesias, e indicador específico de mesas listas. Estos datos no se simulan
+ni se muestran como cero.
 
 ---
 
@@ -302,6 +357,9 @@ dart run flutter_native_splash:create
   guarda en `guardaRutas`.
 - **Nuevo rol con funciones:** definir sus permisos en TEC primero; en la App, agregarlo a
   `RolTec` y a `Rutas.rolesPorSeccion`.
+- **Nueva pantalla o componente:** reutilizar el tema y los widgets compartidos; conservar
+  el escalado de texto y cubrir carga, error, vacío y reintento. Validar los breakpoints
+  con `test/responsive_test.dart` sin inventar estados ni permisos.
 
 ---
 
@@ -316,3 +374,8 @@ dart run flutter_native_splash:create
 | 5. Módulo Tribunal (consultas por rol) | Implementada; pendiente validar con datos reales |
 | 6. Acciones (habilitación, escrutinio, revisión de actas, avisos push) | Implementada; pendiente validar con datos reales y configurar Firebase |
 | 7. Pruebas y seguridad | Pruebas de la App y de autorización en TEC (`mvn -Pqr-tests test`); pendiente la revisión de seguridad integral |
+| 8. Modernización UI y responsive | Implementada; análisis sin incidencias y 89 pruebas aprobadas; pendiente revisión en dispositivos reales |
+
+Antes de publicar, validar con TEC real y revisar Android/iOS, TalkBack/VoiceOver,
+teclado, permisos de cámara y notificaciones, logo definitivo, firma y distribución.
+La validación UI descrita no incluye builds de distribución ni publicación en tiendas.

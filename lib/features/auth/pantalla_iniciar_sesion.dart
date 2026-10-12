@@ -52,7 +52,10 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
     });
     String? error;
     try {
-      await context.read<SesionController>().iniciarSesion(_usuario.text, clave);
+      await context.read<SesionController>().iniciarSesion(
+        _usuario.text,
+        clave,
+      );
     } on ErrorApi catch (e) {
       error = e.mensaje;
     } on SinConexion {
@@ -82,6 +85,7 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             padding: const EdgeInsets.all(24),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
@@ -93,6 +97,18 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                     children: [
                       const Center(child: LogoInstitucional(ancho: 160)),
                       const SizedBox(height: 16),
+                      Text(
+                        'CONPOCIIECH',
+                        textAlign: TextAlign.center,
+                        style: tema.textTheme.headlineSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sistema electoral TEC',
+                        textAlign: TextAlign.center,
+                        style: tema.textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 24),
                       if (_aviso != null) ...[
                         Card(
                           color: tema.colorScheme.secondaryContainer,
@@ -100,13 +116,18 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                             padding: const EdgeInsets.all(12),
                             child: Row(
                               children: [
-                                Icon(Icons.info_outline, color: tema.colorScheme.onSecondaryContainer),
+                                Icon(
+                                  Icons.info_outline,
+                                  color: tema.colorScheme.onSecondaryContainer,
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     _aviso!,
-                                    style: tema.textTheme.bodyMedium
-                                        ?.copyWith(color: tema.colorScheme.onSecondaryContainer),
+                                    style: tema.textTheme.bodyMedium?.copyWith(
+                                      color:
+                                          tema.colorScheme.onSecondaryContainer,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -133,7 +154,9 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                         autocorrect: false,
                         enableSuggestions: false,
                         validator: (valor) =>
-                            (valor == null || valor.trim().isEmpty) ? 'Ingrese su usuario.' : null,
+                            (valor == null || valor.trim().isEmpty)
+                            ? 'Ingrese su usuario.'
+                            : null,
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -143,9 +166,16 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                           labelText: 'Contraseña',
                           prefixIcon: const Icon(Icons.lock_outline),
                           suffixIcon: IconButton(
-                            icon: Icon(_claveVisible ? Icons.visibility_off : Icons.visibility),
-                            tooltip: _claveVisible ? 'Ocultar contraseña' : 'Mostrar contraseña',
-                            onPressed: () => setState(() => _claveVisible = !_claveVisible),
+                            icon: Icon(
+                              _claveVisible
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                            ),
+                            tooltip: _claveVisible
+                                ? 'Ocultar contraseña'
+                                : 'Mostrar contraseña',
+                            onPressed: () =>
+                                setState(() => _claveVisible = !_claveVisible),
                           ),
                         ),
                         obscureText: !_claveVisible,
@@ -154,8 +184,9 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                         autocorrect: false,
                         enableSuggestions: false,
                         onFieldSubmitted: (_) => _ingresar(),
-                        validator: (valor) =>
-                            (valor == null || valor.isEmpty) ? 'Ingrese su contraseña.' : null,
+                        validator: (valor) => (valor == null || valor.isEmpty)
+                            ? 'Ingrese su contraseña.'
+                            : null,
                       ),
                       const SizedBox(height: 24),
                       FilledButton(
@@ -163,7 +194,9 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                         child: _enviando
                             ? const SizedBox.square(
                                 dimension: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Ingresar'),
                       ),

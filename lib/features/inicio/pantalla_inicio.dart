@@ -29,14 +29,24 @@ class PantallaInicio extends StatelessWidget {
                 children: [
                   const Center(child: LogoInstitucional(ancho: 240)),
                   const SizedBox(height: 24),
-                  Text('CONPOCIIECH', textAlign: TextAlign.center, style: tema.textTheme.headlineSmall),
+                  Text(
+                    'CONPOCIIECH',
+                    textAlign: TextAlign.center,
+                    style: tema.textTheme.headlineSmall,
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     'Aplicación institucional',
                     textAlign: TextAlign.center,
                     style: tema.textTheme.bodyLarge,
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Tribunal Electoral · TEC',
+                    textAlign: TextAlign.center,
+                    style: tema.textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 32),
                   if (sesion.puedeAccederTribunal)
                     FilledButton.icon(
                       onPressed: () => context.go(Rutas.tribunal),

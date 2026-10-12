@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../../core/api/cliente_api.dart';
+import '../../shared/widgets/estados_app.dart';
+import '../../shared/tema/diseno_app.dart';
 import 'api_tribunal.dart';
 
 /// Carga una consulta de TEC y muestra progreso, error con reintento o el contenido.
 /// Deslizar hacia abajo vuelve a consultar. Si la sesión expiró, la guarda de rutas ya
 /// lleva al inicio de sesión.
 class VistaConsulta<T> extends StatefulWidget {
-  const VistaConsulta({super.key, required this.cargar, required this.construir});
+  const VistaConsulta({
+    super.key,
+    required this.cargar,
+    required this.construir,
+  });
 
   final Future<T> Function() cargar;
   final Widget Function(BuildContext context, T datos) construir;
@@ -35,48 +41,28 @@ class _VistaConsultaState<T> extends State<VistaConsulta<T>> {
       future: _futuro,
       builder: (context, estado) {
         if (estado.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
+          return const EstadoCarga();
         }
         if (estado.hasError) {
-          return _Error(mensaje: mensajeDeError(estado.error), reintentar: _recargar);
+          return EstadoError(
+            mensaje: mensajeDeError(estado.error),
+            reintentar: _recargar,
+          );
         }
-        return RefreshIndicator(onRefresh: _recargar, child: widget.construir(context, estado.data as T));
+        return RefreshIndicator(
+          onRefresh: _recargar,
+          child: widget.construir(context, estado.data as T),
+        );
       },
     );
   }
 }
 
 String mensajeDeError(Object? error) => switch (error) {
-      ErrorApi(:final mensaje) => mensaje,
-      SinConexion() => SinConexion.mensaje,
-      _ => 'No se pudo cargar la información. Inténtelo más tarde.',
-    };
-
-class _Error extends StatelessWidget {
-  const _Error({required this.mensaje, required this.reintentar});
-
-  final String mensaje;
-  final VoidCallback reintentar;
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.info_outline, size: 40, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 12),
-            Text(mensaje, textAlign: TextAlign.center),
-            const SizedBox(height: 16),
-            OutlinedButton.icon(onPressed: reintentar, icon: const Icon(Icons.refresh), label: const Text('Reintentar')),
-          ],
-        ),
-      ),
-    );
-  }
-}
+  ErrorApi(:final mensaje) => mensaje,
+  SinConexion() => SinConexion.mensaje,
+  _ => 'No se pudo cargar la información. Inténtelo más tarde.',
+};
 
 /// Lista desplazable con márgenes y ancho máximo, apta para RefreshIndicator.
 class ContenidoConsulta extends StatelessWidget {
@@ -89,10 +75,11 @@ class ContenidoConsulta extends StatelessWidget {
     return Align(
       alignment: Alignment.topCenter,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 640),
+        constraints: const BoxConstraints(maxWidth: DisenoApp.anchoContenido),
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16),
+          padding: DisenoApp.margen(MediaQuery.sizeOf(context).width),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           children: children,
         ),
       ),
@@ -141,8 +128,16 @@ class Dato extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 120, child: Text(etiqueta, style: tema.bodySmall)),
-          Expanded(child: Text(valor == null || valor!.isEmpty ? '—' : valor!, style: tema.bodyMedium)),
+          SizedBox(
+            width: MediaQuery.sizeOf(context).width < 600 ? 104 : 160,
+            child: Text(etiqueta, style: tema.bodySmall),
+          ),
+          Expanded(
+            child: Text(
+              valor == null || valor!.isEmpty ? '—' : valor!,
+              style: tema.bodyMedium,
+            ),
+          ),
         ],
       ),
     );
@@ -158,32 +153,45 @@ class Indicadores extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      children: [
-        for (final v in valores.entries)
-          SizedBox(
-            width: 140,
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                color: tema.colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(v.value, style: tema.textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(v.key, style: tema.textTheme.bodySmall),
-                  ],
+    return LayoutBuilder(
+      builder: (context, limites) {
+        final columnas = limites.maxWidth < 400
+            ? 2
+            : limites.maxWidth < 700
+            ? 3
+            : 4;
+        final ancho = (limites.maxWidth - (columnas - 1) * 12) / columnas;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: [
+            for (final v in valores.entries)
+              SizedBox(
+                width: ancho,
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: tema.colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        v.value,
+                        style: tema.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(v.key, style: tema.textTheme.bodySmall),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ),
-      ],
+          ],
+        );
+      },
     );
   }
 }
@@ -199,15 +207,27 @@ class EtiquetaEstado extends StatelessWidget {
     final esquema = Theme.of(context).colorScheme;
     final (fondo, texto) = switch (estado) {
       'CERRADO' => (esquema.primaryContainer, esquema.onPrimaryContainer),
-      'OBSERVADO' || 'ANULADO' => (esquema.errorContainer, esquema.onErrorContainer),
-      'PENDIENTE' => (esquema.surfaceContainerHighest, esquema.onSurfaceVariant),
+      'OBSERVADO' ||
+      'ANULADO' => (esquema.errorContainer, esquema.onErrorContainer),
+      'PENDIENTE' => (
+        esquema.surfaceContainerHighest,
+        esquema.onSurfaceVariant,
+      ),
       _ => (esquema.secondaryContainer, esquema.onSecondaryContainer),
     };
     return DecoratedBox(
-      decoration: BoxDecoration(color: fondo, borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(
+        color: fondo,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(EstadoMesa.etiqueta(estado), style: Theme.of(context).textTheme.labelMedium?.copyWith(color: texto)),
+        child: Text(
+          EstadoMesa.etiqueta(estado),
+          style: Theme.of(
+            context,
+          ).textTheme.labelMedium?.copyWith(color: texto),
+        ),
       ),
     );
   }

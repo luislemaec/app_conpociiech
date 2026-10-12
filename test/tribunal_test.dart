@@ -16,7 +16,12 @@ Future<void> montar(WidgetTester tester, String usuario) async {
   final sesion = tec.crearSesion();
   await tester.runAsync(() => sesion.iniciarSesion(usuario, 'Clave123'));
   await tester.pumpWidget(
-      AppConpociiech(entorno: Entorno.desdeUrl(Entorno.urlPorDefecto), sesion: sesion, cliente: tec.api));
+    AppConpociiech(
+      entorno: Entorno.desdeUrl(Entorno.urlPorDefecto),
+      sesion: sesion,
+      cliente: tec.api,
+    ),
+  );
   await tester.pumpAndSettle();
 }
 
@@ -29,7 +34,9 @@ Future<void> ir(WidgetTester tester, String ruta) async {
 
 Future<void> esperar(WidgetTester tester) async {
   for (var i = 0; i < 3; i++) {
-    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 20)));
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 20)),
+    );
     await tester.pumpAndSettle();
   }
 }
@@ -37,11 +44,26 @@ Future<void> esperar(WidgetTester tester) async {
 void main() {
   setUp(() {
     tec = TecSimulado()
-      ..usuarios['presidente'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.presidenteMesa])
-      ..usuarios['iglesia'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.iglesiaAdmin])
-      ..usuarios['tribunal'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.tribunal])
-      ..usuarios['varios'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.iglesiaAdmin, RolTec.presidenteMesa])
-      ..usuarios['tecnico'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.tecnico]);
+      ..usuarios['presidente'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.presidenteMesa],
+      )
+      ..usuarios['iglesia'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.iglesiaAdmin],
+      )
+      ..usuarios['tribunal'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.tribunal],
+      )
+      ..usuarios['varios'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.iglesiaAdmin, RolTec.presidenteMesa],
+      )
+      ..usuarios['tecnico'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.tecnico],
+      );
   });
 
   group('Panel del módulo según roles', () {
@@ -68,7 +90,9 @@ void main() {
       expect(tec.consultas.where((u) => u.path.contains('/proceso')), isEmpty);
     });
 
-    testWidgets('roles sin funciones en V1 no entran al módulo', (tester) async {
+    testWidgets('roles sin funciones en V1 no entran al módulo', (
+      tester,
+    ) async {
       await montar(tester, 'tecnico');
       await ir(tester, Rutas.tribunal);
       expect(find.text('Iniciar sesión'), findsNothing);
@@ -78,16 +102,25 @@ void main() {
   });
 
   group('Presidente de mesa', () {
-    testWidgets('muestra la mesa, la junta y oculta resultados si no está cerrada', (tester) async {
-      await montar(tester, 'presidente');
-      await ir(tester, Rutas.miMesa);
-      expect(find.text('MESA 7'), findsOneWidget);
-      expect(find.text('Abierta'), findsOneWidget);
-      expect(find.text('Pérez Ana'), findsOneWidget);
-      await tester.scrollUntilVisible(find.text('Los resultados se muestran cuando la mesa está cerrada.'), 200,
-          scrollable: find.byType(Scrollable).first);
-      expect(find.text('Los resultados se muestran cuando la mesa está cerrada.'), findsOneWidget);
-    });
+    testWidgets(
+      'muestra la mesa, la junta y oculta resultados si no está cerrada',
+      (tester) async {
+        await montar(tester, 'presidente');
+        await ir(tester, Rutas.miMesa);
+        expect(find.text('MESA 7'), findsOneWidget);
+        expect(find.text('Abierta'), findsOneWidget);
+        expect(find.text('Pérez Ana'), findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.text('Los resultados se muestran cuando la mesa está cerrada.'),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        expect(
+          find.text('Los resultados se muestran cuando la mesa está cerrada.'),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets('con la mesa cerrada muestra resultados', (tester) async {
       tec.estadoMesa = 'CERRADO';
@@ -110,17 +143,20 @@ void main() {
   });
 
   group('IglesiaAdmin', () {
-    Uri ultimaConsultaMiembros() => tec.consultas.lastWhere((u) => u.path.endsWith('/miembros'));
+    Uri ultimaConsultaMiembros() =>
+        tec.consultas.lastWhere((u) => u.path.endsWith('/miembros'));
 
     testWidgets('muestra la iglesia y su resumen', (tester) async {
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miIglesia);
       expect(find.text('Iglesia Central'), findsOneWidget);
-      expect(find.text('Habilitados para participar'), findsOneWidget);
-      expect(find.text('23'), findsOneWidget);
+      expect(find.text('Habilitados / Total'), findsOneWidget);
+      expect(find.text('23 / 45'), findsOneWidget);
     });
 
-    testWidgets('miembros por páginas y filtro de habilitación', (tester) async {
+    testWidgets('miembros por páginas y filtro de habilitación', (
+      tester,
+    ) async {
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miembrosIglesia);
       expect(find.text('45 miembros'), findsOneWidget);
@@ -138,13 +174,19 @@ void main() {
   });
 
   group('Pendientes de revisión', () {
-    Uri ultimaConsultaMiembros() => tec.consultas.lastWhere((u) => u.path.endsWith('/miembros'));
+    Uri ultimaConsultaMiembros() =>
+        tec.consultas.lastWhere((u) => u.path.endsWith('/miembros'));
 
-    testWidgets('Mi iglesia ofrece ir a los pendientes con su cantidad', (tester) async {
+    testWidgets('Mi iglesia ofrece ir a los pendientes con su cantidad', (
+      tester,
+    ) async {
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miIglesia);
-      await tester.scrollUntilVisible(find.text('Ver pendientes de revisión (30)'), 200,
-          scrollable: find.byType(Scrollable).first);
+      await tester.scrollUntilVisible(
+        find.text('Ver pendientes de revisión (30)'),
+        200,
+        scrollable: find.byType(Scrollable).first,
+      );
       await tester.tap(find.text('Ver pendientes de revisión (30)'));
       await esperar(tester);
       expect(ultimaConsultaMiembros().queryParameters['revisado'], 'false');
@@ -152,43 +194,69 @@ void main() {
       expect(find.textContaining('Pendiente de revisión'), findsWidgets);
     });
 
-    testWidgets('el filtro se combina con el de habilitación y se puede quitar', (tester) async {
-      await montar(tester, 'iglesia');
-      await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
-      await tester.tap(find.text('No habilitados'));
-      await esperar(tester);
-      expect(ultimaConsultaMiembros().queryParameters, containsPair('revisado', 'false'));
-      expect(ultimaConsultaMiembros().queryParameters, containsPair('habilitado', 'false'));
-      expect(find.text('15 pendientes de revisión'), findsOneWidget);
+    testWidgets(
+      'el filtro se combina con el de habilitación y se puede quitar',
+      (tester) async {
+        await montar(tester, 'iglesia');
+        await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
+        await tester.tap(find.text('No habilitados'));
+        await esperar(tester);
+        expect(
+          ultimaConsultaMiembros().queryParameters,
+          containsPair('revisado', 'false'),
+        );
+        expect(
+          ultimaConsultaMiembros().queryParameters,
+          containsPair('habilitado', 'false'),
+        );
+        expect(find.text('15 pendientes de revisión'), findsOneWidget);
 
-      await tester.tap(find.text('Pendientes de revisión'));
-      await esperar(tester);
-      expect(ultimaConsultaMiembros().queryParameters.containsKey('revisado'), isFalse);
-      expect(find.text('22 miembros'), findsOneWidget);
-    });
+        await tester.tap(find.text('Pendientes de revisión'));
+        await esperar(tester);
+        expect(
+          ultimaConsultaMiembros().queryParameters.containsKey('revisado'),
+          isFalse,
+        );
+        expect(find.text('22 miembros'), findsOneWidget);
+      },
+    );
 
-    testWidgets('cambiar la habilitación de un pendiente lo marca como revisado', (tester) async {
-      await montar(tester, 'iglesia');
-      await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 01'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Quitar habilitación'));
-      await esperar(tester);
-      expect(tec.miembros[0]['revisado'], isTrue);
-      expect(find.text('No habilitado'), findsOneWidget, reason: 'la fila ya no dice «Pendiente de revisión»');
-    });
+    testWidgets(
+      'cambiar la habilitación de un pendiente lo marca como revisado',
+      (tester) async {
+        await montar(tester, 'iglesia');
+        await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
+        await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 01'));
+        await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(FilledButton, 'Quitar habilitación'),
+        );
+        await esperar(tester);
+        expect(tec.miembros[0]['revisado'], isTrue);
+        expect(
+          find.text('No habilitado'),
+          findsOneWidget,
+          reason: 'la fila ya no dice «Pendiente de revisión»',
+        );
+      },
+    );
 
     test('la App pide los pendientes con revisado=false', () async {
       final sesion = tec.crearSesion();
       await sesion.iniciarSesion('iglesia', 'Clave123');
-      final pagina = await ApiTribunal(tec.api, sesion).miembros(revisado: false);
+      final pagina = await ApiTribunal(
+        tec.api,
+        sesion,
+      ).miembros(revisado: false);
       expect(pagina.total, 30);
       expect(pagina.elementos.every((m) => !m.revisado), isTrue);
     });
   });
 
   group('Habilitación de miembros', () {
-    testWidgets('pide confirmación, guarda en TEC y actualiza la fila', (tester) async {
+    testWidgets('pide confirmación, guarda en TEC y actualiza la fila', (
+      tester,
+    ) async {
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miembrosIglesia);
       // Miembro 02 está no habilitado (los pares lo están en falso).
@@ -197,12 +265,18 @@ void main() {
 
       await tester.tap(fila);
       await tester.pumpAndSettle();
-      expect(find.text('¿Habilitar a Miembro 02 para participar en las elecciones?'), findsOneWidget);
+      expect(
+        find.text('¿Habilitar a Miembro 02 para participar en las elecciones?'),
+        findsOneWidget,
+      );
       await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
       await esperar(tester);
 
       expect(tester.widget<SwitchListTile>(fila).value, isTrue);
-      expect(find.text('Miembro 02 quedó habilitado para participar.'), findsOneWidget);
+      expect(
+        find.text('Miembro 02 quedó habilitado para participar.'),
+        findsOneWidget,
+      );
       expect(tec.miembros[1]['habilitado'], isTrue);
       expect(tec.miembros[1]['revisado'], isTrue);
     });
@@ -216,10 +290,15 @@ void main() {
       await tester.tap(find.text('Cancelar'));
       await esperar(tester);
       expect(tester.widget<SwitchListTile>(fila).value, isTrue);
-      expect(tec.consultas.where((u) => u.path.endsWith('/habilitacion')), isEmpty);
+      expect(
+        tec.consultas.where((u) => u.path.endsWith('/habilitacion')),
+        isEmpty,
+      );
     });
 
-    testWidgets('con el cronograma cerrado no se ofrece editar', (tester) async {
+    testWidgets('con el cronograma cerrado no se ofrece editar', (
+      tester,
+    ) async {
       tec.edicionAbierta = false;
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miembrosIglesia);
@@ -227,23 +306,29 @@ void main() {
       expect(find.textContaining('fase del cronograma'), findsOneWidget);
     });
 
-    testWidgets('si el cronograma se cierra mientras edita, informa y bloquea', (tester) async {
-      await montar(tester, 'iglesia');
-      await ir(tester, Rutas.miembrosIglesia);
-      tec.edicionAbierta = false;
-      await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 02'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
-      await esperar(tester);
-      expect(find.textContaining('cerrada por el cronograma'), findsWidgets);
-      expect(find.byType(SwitchListTile), findsNothing);
-      expect(tec.miembros[1]['habilitado'], isFalse);
-    });
+    testWidgets(
+      'si el cronograma se cierra mientras edita, informa y bloquea',
+      (tester) async {
+        await montar(tester, 'iglesia');
+        await ir(tester, Rutas.miembrosIglesia);
+        tec.edicionAbierta = false;
+        await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 02'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
+        await esperar(tester);
+        expect(find.textContaining('cerrada por el cronograma'), findsWidgets);
+        expect(find.byType(SwitchListTile), findsNothing);
+        expect(tec.miembros[1]['habilitado'], isFalse);
+      },
+    );
 
     test('solo el IglesiaAdmin puede cambiar la habilitación', () async {
       final sesion = tec.crearSesion();
       await sesion.iniciarSesion('tribunal', 'Clave123');
-      await expectLater(ApiTribunal(tec.api, sesion).cambiarHabilitacion(2, true), throwsA(errorApi('SIN_PERMISO')));
+      await expectLater(
+        ApiTribunal(tec.api, sesion).cambiarHabilitacion(2, true),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
     });
   });
 
@@ -279,16 +364,27 @@ void main() {
     test('un rol no autorizado recibe el mensaje de TEC', () async {
       final sesion = tec.crearSesion();
       await sesion.iniciarSesion('presidente', 'Clave123');
-      await expectLater(ApiTribunal(tec.api, sesion).iglesia(), throwsA(errorApi('SIN_PERMISO')));
+      await expectLater(
+        ApiTribunal(tec.api, sesion).iglesia(),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
     });
 
     test('la URL lleva los parámetros de consulta', () async {
       final sesion = tec.crearSesion();
       await sesion.iniciarSesion('iglesia', 'Clave123');
-      await ApiTribunal(tec.api, sesion).miembros(busqueda: ' ana ', habilitado: true, pagina: 2);
+      await ApiTribunal(
+        tec.api,
+        sesion,
+      ).miembros(busqueda: ' ana ', habilitado: true, pagina: 2);
       final url = tec.consultas.last;
       expect(url.path, '/api/v1/tribunal/iglesia/miembros');
-      expect(url.queryParameters, {'busqueda': 'ana', 'habilitado': 'true', 'pagina': '2', 'tamano': '30'});
+      expect(url.queryParameters, {
+        'busqueda': 'ana',
+        'habilitado': 'true',
+        'pagina': '2',
+        'tamano': '30',
+      });
     });
   });
 }

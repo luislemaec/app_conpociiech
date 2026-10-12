@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../../shared/widgets/estructura_adaptativa.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -8,6 +9,7 @@ import '../../../core/api/cliente_api.dart';
 import '../../../core/router/app_router.dart';
 import '../api_tribunal.dart';
 import '../widgets_tribunal.dart';
+import '../../../shared/widgets/estados_app.dart';
 
 /// Datos y resumen de miembros de la iglesia asignada al IglesiaAdmin.
 class PantallaMiIglesia extends StatelessWidget {
@@ -16,7 +18,7 @@ class PantallaMiIglesia extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final api = context.read<ApiTribunal>();
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Mi iglesia')),
       body: VistaConsulta<IglesiaResumen>(
         cargar: api.iglesia,
@@ -33,19 +35,29 @@ class PantallaMiIglesia extends StatelessWidget {
               titulo: 'Miembros',
               children: [
                 Indicadores({
-                  'Miembros activos': formatoNumero(iglesia.totalMiembros),
-                  'Habilitados para participar': formatoNumero(iglesia.habilitados),
+                  'Total de miembros': formatoNumero(iglesia.totalMiembros),
+                  'Habilitados / Total':
+                      '${formatoNumero(iglesia.habilitados)} / ${formatoNumero(iglesia.totalMiembros)}',
                   'No habilitados': formatoNumero(iglesia.noHabilitados),
-                  'Información completa': formatoNumero(iglesia.informacionCompleta),
-                  'Pendientes de revisión': formatoNumero(iglesia.pendientesRevision),
-                  'También en otra iglesia': formatoNumero(iglesia.enOtraIglesia),
+                  'Información completa': formatoNumero(
+                    iglesia.informacionCompleta,
+                  ),
+                  'Pendientes de revisión': formatoNumero(
+                    iglesia.pendientesRevision,
+                  ),
+                  'También en otra iglesia': formatoNumero(
+                    iglesia.enOtraIglesia,
+                  ),
                 }),
                 const SizedBox(height: 16),
                 if (iglesia.pendientesRevision > 0) ...[
                   FilledButton.icon(
-                    onPressed: () => context.go('${Rutas.miembrosIglesia}?pendientes=1'),
+                    onPressed: () =>
+                        context.go('${Rutas.miembrosIglesia}?pendientes=1'),
                     icon: const Icon(Icons.pending_actions_outlined),
-                    label: Text('Ver pendientes de revisión (${formatoNumero(iglesia.pendientesRevision)})'),
+                    label: Text(
+                      'Ver pendientes de revisión (${formatoNumero(iglesia.pendientesRevision)})',
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
@@ -71,7 +83,8 @@ class PantallaMiembrosIglesia extends StatefulWidget {
   final bool soloPendientes;
 
   @override
-  State<PantallaMiembrosIglesia> createState() => _PantallaMiembrosIglesiaState();
+  State<PantallaMiembrosIglesia> createState() =>
+      _PantallaMiembrosIglesiaState();
 }
 
 class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
@@ -121,11 +134,16 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
       context: context,
       builder: (context) => AlertDialog(
         title: Text(habilitado ? 'Habilitar miembro' : 'Quitar habilitación'),
-        content: Text(habilitado
-            ? '¿Habilitar a ${miembro.nombre} para participar en las elecciones?'
-            : '¿${miembro.nombre} dejará de estar habilitado para participar en las elecciones?'),
+        content: Text(
+          habilitado
+              ? '¿Habilitar a ${miembro.nombre} para participar en las elecciones?'
+              : '¿${miembro.nombre} dejará de estar habilitado para participar en las elecciones?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             child: Text(habilitado ? 'Habilitar' : 'Quitar habilitación'),
@@ -150,7 +168,9 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
           : '${actualizado.nombre} quedó como no habilitado.';
     } on ErrorApi catch (e) {
       // La fase del cronograma pudo cerrarse mientras la pantalla estaba abierta.
-      if (e.codigo == 'EDICION_CERRADA' && mounted) setState(() => _permiteEdicion = false);
+      if (e.codigo == 'EDICION_CERRADA' && mounted) {
+        setState(() => _permiteEdicion = false);
+      }
       aviso = e.mensaje;
     } catch (e) {
       aviso = mensajeDeError(e);
@@ -182,18 +202,23 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
   }
 
   Future<void> _cargarMas({bool forzar = false}) async {
-    if (_cargando || (!forzar && _miembros.length >= _total)) return;
+    if (_cargando ||
+        (!forzar && (_error != null || _miembros.length >= _total))) {
+      return;
+    }
     final consulta = _consulta;
-    setState(() => _cargando = true);
+    setState(() {
+      _cargando = true;
+      _error = null;
+    });
     try {
-      final pagina = await context
-          .read<ApiTribunal>()
-          .miembros(
-              busqueda: _busqueda,
-              habilitado: _habilitado,
-              revisado: _soloPendientes ? false : null,
-              pagina: _pagina,
-              tamano: _tamano);
+      final pagina = await context.read<ApiTribunal>().miembros(
+        busqueda: _busqueda,
+        habilitado: _habilitado,
+        revisado: _soloPendientes ? false : null,
+        pagina: _pagina,
+        tamano: _tamano,
+      );
       if (!mounted || consulta != _consulta) return;
       setState(() {
         _miembros.addAll(pagina.elementos);
@@ -220,23 +245,31 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Miembros')),
       body: Column(
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
-              decoration: const InputDecoration(labelText: 'Buscar por nombre', prefixIcon: Icon(Icons.search)),
+              decoration: const InputDecoration(
+                labelText: 'Buscar por nombre',
+                prefixIcon: Icon(Icons.search),
+              ),
               onChanged: _buscar,
             ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
+          Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                for (final (valor, texto) in const [(null, 'Todos'), (true, 'Habilitados'), (false, 'No habilitados')])
+                for (final (valor, texto) in const [
+                  (null, 'Todos'),
+                  (true, 'Habilitados'),
+                  (false, 'No habilitados'),
+                ])
                   Padding(
                     padding: const EdgeInsets.only(right: 8),
                     child: ChoiceChip(
@@ -264,9 +297,11 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: Align(
               alignment: Alignment.centerLeft,
-              child: Text(_soloPendientes
-                  ? '${formatoNumero(_total)} pendientes de revisión'
-                  : '${formatoNumero(_total)} miembros'),
+              child: Text(
+                _soloPendientes
+                    ? '${formatoNumero(_total)} pendientes de revisión'
+                    : '${formatoNumero(_total)} miembros',
+              ),
             ),
           ),
           if (_soloPendientes && _permiteEdicion)
@@ -300,19 +335,12 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
 
   Widget _lista() {
     if (_error != null && _miembros.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(_error!, textAlign: TextAlign.center),
-            const SizedBox(height: 12),
-            OutlinedButton(onPressed: _reiniciar, child: const Text('Reintentar')),
-          ]),
-        ),
-      );
+      return EstadoError(mensaje: _error!, reintentar: _reiniciar);
     }
     if (_miembros.isEmpty) {
-      return Center(child: _cargando ? const CircularProgressIndicator() : const Text('No hay miembros para mostrar.'));
+      return _cargando
+          ? const EstadoCarga()
+          : const EstadoVacio(mensaje: 'No hay miembros para mostrar.');
     }
     return ListView.separated(
       controller: _desplazamiento,
@@ -320,28 +348,47 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
       separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, i) {
         if (i >= _miembros.length) {
-          return const Padding(padding: EdgeInsets.all(16), child: Center(child: CircularProgressIndicator()));
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: _error != null
+                ? EstadoError(
+                    mensaje: _error!,
+                    reintentar: () => _cargarMas(forzar: true),
+                  )
+                : const EstadoCarga(),
+          );
         }
         final m = _miembros[i];
         final revisado = m.revisado
-            ? const Tooltip(message: 'Información revisada', child: Icon(Icons.verified_outlined, size: 20))
+            ? const Tooltip(
+                message: 'Información revisada',
+                child: Icon(Icons.verified_outlined, size: 20),
+              )
             : null;
         final estado = [
           m.habilitado ? 'Habilitado para participar' : 'No habilitado',
           if (!m.revisado) 'Pendiente de revisión',
         ].join(' · ');
         if (!_permiteEdicion) {
-          return ListTile(title: Text(m.nombre), subtitle: Text(estado), trailing: revisado);
+          return ListTile(
+            title: Text(m.nombre),
+            subtitle: Text(estado),
+            trailing: revisado,
+          );
         }
         final guardando = _guardando.contains(m.id);
         return SwitchListTile(
-          title: Row(children: [
-            Expanded(child: Text(m.nombre)),
-            ?revisado,
-          ]),
+          title: Row(
+            children: [
+              Expanded(child: Text(m.nombre)),
+              ?revisado,
+            ],
+          ),
           subtitle: Text(guardando ? 'Guardando…' : estado),
           value: m.habilitado,
-          onChanged: guardando ? null : (valor) => _cambiarHabilitacion(m, valor),
+          onChanged: guardando
+              ? null
+              : (valor) => _cambiarHabilitacion(m, valor),
         );
       },
     );

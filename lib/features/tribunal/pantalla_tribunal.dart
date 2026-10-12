@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import '../../shared/widgets/estructura_adaptativa.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/router/app_router.dart';
+import '../../shared/widgets/cabecera_app.dart';
 import '../../core/sesion/roles.dart';
 import '../../core/sesion/sesion_controller.dart';
 
@@ -14,7 +16,7 @@ class PantallaTribunal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sesion = context.watch<SesionController>();
-    return Scaffold(
+    return EstructuraAdaptativa(
       appBar: AppBar(
         title: const Text('Tribunal Electoral'),
         leading: IconButton(
@@ -42,8 +44,17 @@ class PantallaTribunal extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const CabeceraApp(
+                titulo: 'Su espacio electoral',
+                descripcion:
+                    'Acceda a las funciones disponibles para sus roles en TEC.',
+                icono: Icons.how_to_vote_outlined,
+              ),
               if (sesion.nombreUsuario != null) ...[
-                Text(sesion.nombreUsuario!, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  sesion.nombreUsuario!,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 16),
               ],
               if (sesion.tieneAlgunRol(RolTec.seccionMesa))
@@ -57,14 +68,16 @@ class PantallaTribunal extends StatelessWidget {
                 const _Opcion(
                   icono: Icons.church_outlined,
                   titulo: 'Mi iglesia',
-                  descripcion: 'Datos de la iglesia y habilitación de sus miembros.',
+                  descripcion:
+                      'Datos de la iglesia y habilitación de sus miembros.',
                   ruta: Rutas.miIglesia,
                 ),
               if (sesion.tieneAlgunRol(RolTec.seccionProceso))
                 const _Opcion(
                   icono: Icons.insights_outlined,
                   titulo: 'Proceso electoral',
-                  descripcion: 'Resumen, avance de mesas y resultados consolidados.',
+                  descripcion:
+                      'Resumen, avance de mesas y resultados consolidados.',
                   ruta: Rutas.proceso,
                 ),
             ],
@@ -76,7 +89,12 @@ class PantallaTribunal extends StatelessWidget {
 }
 
 class _Opcion extends StatelessWidget {
-  const _Opcion({required this.icono, required this.titulo, required this.descripcion, required this.ruta});
+  const _Opcion({
+    required this.icono,
+    required this.titulo,
+    required this.descripcion,
+    required this.ruta,
+  });
 
   final IconData icono;
   final String titulo;
