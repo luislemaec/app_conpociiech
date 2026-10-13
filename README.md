@@ -62,11 +62,17 @@ lib/
     tema/                       Tema Material 3, colores, Montserrat y tokens responsive
       diseno_app.dart           Espaciado, radios, breakpoints y ancho máximo de contenido
     widgets/                    Logo, encabezado, estados y estructura adaptativa
+      estructura_principal.dart Pestañas Inicio · Organización · Servicios (área pública)
       estructura_adaptativa.dart NavigationBar / NavigationRail según ancho y roles
+      componentes_institucionales.dart Encabezado, tarjeta de sección y de servicio
+      entrada_animada.dart      Entrada suave (respeta «reducir animaciones»)
+      logo_institucional.dart   Logo de CONPOCIIECH y logo del TEC
       estados_app.dart          Carga, vacío y error con reintento
       cabecera_app.dart         Encabezado reutilizable
   features/                     Un directorio por módulo
-    inicio/                     Área pública
+    inicio/                     Inicio público
+    organizacion/               Organización y contenido institucional publicado
+    servicios/                  Servicios electorales y cuenta
     auth/                       Inicio de sesión y cambio de clave
     tribunal/                   Módulo Tribunal Electoral (área autenticada)
       api_tribunal.dart         Endpoints /tribunal/* y sus modelos
@@ -81,6 +87,7 @@ test/
   tec_simulado.dart             TEC simulado (MockClient) con las reglas del contrato
   sesion_controller_test.dart   Sesión: tokens, renovación, inactividad, cambio de clave
   app_test.dart                 Navegación, guardas e inicio de sesión
+  navegacion_institucional_test.dart Pestañas, Organización y accesos desde Servicios
   tribunal_test.dart            Consultas por rol, miembros, pendientes, habilitación
   escrutinio_test.dart          Apertura, conteo, cierre y foto del acta
   revision_acta_test.dart       Alertas, detalle de mesa y revisión del acta
@@ -147,7 +154,9 @@ sequenceDiagram
 
 | Ruta | Pantalla | Exige |
 |---|---|---|
-| `/` | Inicio público | — |
+| `/` | Inicio (pestaña) | — |
+| `/organizacion` | Organización (pestaña) | — |
+| `/servicios` | Servicios (pestaña): acceso al TEC y cuenta | — |
 | `/iniciar-sesion?destino=` | Inicio de sesión | — (si ya hay sesión, va al destino) |
 | `/cambiar-clave` | Cambio de clave | Sesión |
 | `/tribunal` | Panel del módulo | Sesión y un rol del módulo |
@@ -162,6 +171,11 @@ sequenceDiagram
 
 Un usuario con varios roles ve la **unión** de sus secciones. Los destinos tras iniciar
 sesión o al tocar un aviso solo aceptan rutas internas conocidas (`destinoSeguro`).
+
+El área pública usa `EstructuraPrincipal` (`StatefulShellRoute`): tres pestañas que conservan
+su estado; barra inferior en teléfonos y riel lateral desde 600 px. El módulo Tribunal, el
+inicio de sesión y el cambio de clave quedan fuera de esas pestañas; se entra al Tribunal
+desde **Servicios** (o desde «Mi cuenta» en Inicio) y su botón «atrás» vuelve a Servicios.
 
 En las pantallas electorales, `EstructuraAdaptativa` presenta `NavigationBar` en teléfonos
 y `NavigationRail` desde 600 px. Solo incluye las secciones disponibles para los roles de
@@ -320,10 +334,28 @@ el build falla a propósito). Pasos completos en [docs/release-android.md](docs/
   identifica cambios pendientes de guardar y el cierre de la mesa.
 - No se agregaron dependencias ni se modificaron endpoints, modelos, autenticación,
   tokens, permisos, guardas o reglas electorales durante la modernización.
-- **Provisional con el logo TEC:** `assets/branding/logo_tec_provisional.png`, icono y
-  splash (fuentes en `branding/`, configuración en `flutter_launcher_icons.yaml` y
-  `flutter_native_splash.yaml`). Con el logo oficial de CONPOCIIECH, reemplazar esas
-  imágenes y ejecutar:
+- **Logos:** `assets/branding/logo_conpociiech.png` es el símbolo oficial de la
+  organización sin la palabra «CONPOCIIECH» (el original con texto se conserva en
+  `branding/logo_conpociiech_original.png`). Se usa en Inicio, Organización y la barra
+  superior, y el nombre va como texto. `assets/branding/logo_tec.png` es el del TEC –
+  Tribunal Electoral (inicio de sesión y módulo Tribunal).
+- **Transparencia:** ambos PNG tienen canal alfa real, sin fondo blanco y con un margen
+  uniforme del 4 %. `branding/normalizar_logo.ps1` quita solo el blanco conectado con el
+  borde de la imagen (los blancos internos del diseño no se tocan), separa del blanco los
+  píxeles de suavizado del contorno para evitar halos y recorta el margen. En una imagen que
+  ya trae transparencia (como el logo TEC) no elimina ningún blanco: solo recorta. El
+  contorno claro del sello de CONPOCIIECH es parte del diseño y se conserva.
+- **Contenido institucional:** `features/organizacion/contenido_institucional.dart`, solo
+  con textos publicados en www.conpociiech.org y en el logo. Historia, Misión y Visión,
+  Autoridades y Contacto se agregan cuando estén publicados.
+- **Icono y splash: símbolo de CONPOCIIECH sobre blanco** (también en modo oscuro), generados
+  desde `assets/branding/logo_conpociiech.png` con márgenes y zonas seguras de cada
+  plataforma: icono clásico/iOS con el símbolo al 76 %, icono adaptativo dentro de la zona
+  segura (~59 %), splash de 180 dp y splash de Android 12 dentro de su círculo. Fuentes en
+  `branding/`, configuración en `flutter_launcher_icons.yaml` y `flutter_native_splash.yaml`.
+  Si se recibe el símbolo en mayor resolución, reemplazar `logo_conpociiech.png`, ejecutar
+  `powershell -File branding/generar_branding.ps1 -App .` (Windows) y luego
+  ejecutar:
 
 ```bash
 dart run flutter_launcher_icons

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import '../../features/auth/pantalla_cambiar_clave.dart';
 import '../../features/auth/pantalla_iniciar_sesion.dart';
 import '../../features/inicio/pantalla_inicio.dart';
+import '../../features/organizacion/pantalla_organizacion.dart';
+import '../../features/servicios/pantalla_servicios.dart';
 import '../../features/tribunal/iglesia/pantallas_iglesia.dart';
 import '../../features/tribunal/pantalla_tribunal.dart';
 import '../../features/tribunal/presidente/pantalla_escrutinio.dart';
@@ -11,11 +13,14 @@ import '../../features/tribunal/proceso/pantalla_detalle_mesa.dart';
 import '../../features/tribunal/proceso/pantallas_proceso.dart';
 import '../sesion/roles.dart';
 import '../sesion/sesion_controller.dart';
+import '../../shared/widgets/estructura_principal.dart';
 
 /// Rutas de la App. El área pública no exige sesión; cada módulo protegido declara su
 /// guarda. La guarda solo decide qué se muestra: TEC vuelve a autorizar cada petición.
 abstract final class Rutas {
   static const String inicio = '/';
+  static const String organizacion = '/organizacion';
+  static const String servicios = '/servicios';
   static const String iniciarSesion = '/iniciar-sesion';
   static const String cambiarClave = '/cambiar-clave';
   static const String tribunal = '/tribunal';
@@ -48,7 +53,21 @@ GoRouter crearRouter(SesionController sesion) {
     refreshListenable: sesion,
     redirect: (context, estado) => guardaRutas(sesion, estado.uri),
     routes: [
-      GoRoute(path: Rutas.inicio, builder: (context, estado) => const PantallaInicio()),
+      // Área pública institucional: Inicio · Organización · Servicios.
+      StatefulShellRoute.indexedStack(
+        builder: (context, estado, navegacion) => EstructuraPrincipal(navegacion: navegacion),
+        branches: [
+          StatefulShellBranch(routes: [
+            GoRoute(path: Rutas.inicio, builder: (context, estado) => const PantallaInicio()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: Rutas.organizacion, builder: (context, estado) => const PantallaOrganizacion()),
+          ]),
+          StatefulShellBranch(routes: [
+            GoRoute(path: Rutas.servicios, builder: (context, estado) => const PantallaServicios()),
+          ]),
+        ],
+      ),
       GoRoute(
         path: Rutas.iniciarSesion,
         builder: (context, estado) =>
@@ -134,6 +153,8 @@ String? guardaRutas(SesionController sesion, Uri uri) {
 String destinoSeguro(String? destino, SesionController sesion) {
   const internas = {
     Rutas.inicio,
+    Rutas.organizacion,
+    Rutas.servicios,
     Rutas.cambiarClave,
     Rutas.tribunal,
     Rutas.miMesa,

@@ -33,7 +33,7 @@ flutter:
   uses-material-design: true
 
   assets:
-    # Logo provisional del TEC hasta contar con el logo oficial de CONPOCIIECH.
+    # Logo oficial de CONPOCIIECH (organización) y logo del TEC (módulo Tribunal).
     - assets/branding/
 
   # Tipografía institucional del Tribunal (Montserrat, licencia OFL en assets/fonts/OFL.txt).

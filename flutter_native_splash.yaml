@@ -1,14 +1,15 @@
-# Pantalla de inicio nativa (provisional: logo TEC). Al recibir el logo oficial,
-# reemplazar las imágenes de branding/ y ejecutar:
+# Pantalla de inicio nativa: símbolo oficial de CONPOCIIECH (sin texto) sobre blanco,
+# generado desde assets/branding/logo_conpociiech.png. Tras cambiar las imágenes de
+# branding/, ejecutar:
 #   dart run flutter_native_splash:create
 flutter_native_splash:
   color: "#FFFFFF"
-  # 1152 px = 288 dp: cabe en teléfonos de 360 dp (el generador la trata como 4x).
-  image: "branding/splash_provisional.png"
-  # Android 12+ muestra el icono dentro de un círculo: imagen propia que cabe en él.
+  # 1152 px = 288 dp (el generador la trata como 4x); el símbolo ocupa 180 dp.
+  image: "branding/splash_conpociiech.png"
+  # Android 12+ muestra el icono dentro de un círculo: símbolo dentro de esa zona.
   android_12:
     color: "#FFFFFF"
-    image: "branding/splash_android12.png"
+    image: "branding/splash_android12_conpociiech.png"
   android: true
   ios: true
   web: false

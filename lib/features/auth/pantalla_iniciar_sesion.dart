@@ -95,7 +95,7 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Center(child: LogoInstitucional(ancho: 160)),
+                      const Center(child: LogoTribunal(ancho: 160)),
                       const SizedBox(height: 16),
                       Text(
                         'CONPOCIIECH',

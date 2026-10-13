@@ -54,8 +54,7 @@ void main() {
 
     testWidgets('«Iniciar sesión» abre el formulario', (tester) async {
       await montarApp(tester);
-      await tester.tap(find.text('Iniciar sesión'));
-      await tester.pumpAndSettle();
+      await tocarYEsperar(tester, find.text('Iniciar sesión'));
       expect(find.text('Ingresar'), findsOneWidget);
     });
   });

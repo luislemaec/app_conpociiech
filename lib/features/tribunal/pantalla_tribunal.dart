@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/router/app_router.dart';
 import '../../shared/widgets/cabecera_app.dart';
+import '../../shared/widgets/logo_institucional.dart';
 import '../../core/sesion/roles.dart';
 import '../../core/sesion/sesion_controller.dart';
 
@@ -21,8 +22,8 @@ class PantallaTribunal extends StatelessWidget {
         title: const Text('Tribunal Electoral'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          tooltip: 'Inicio',
-          onPressed: () => context.go(Rutas.inicio),
+          tooltip: 'Servicios',
+          onPressed: () => context.go(Rutas.servicios),
         ),
         actions: [
           IconButton(
@@ -44,6 +45,8 @@ class PantallaTribunal extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              const Center(child: LogoTribunal(ancho: 150)),
+              const SizedBox(height: 16),
               const CabeceraApp(
                 titulo: 'Su espacio electoral',
                 descripcion:

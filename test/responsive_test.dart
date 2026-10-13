@@ -44,6 +44,9 @@ void main() {
         expect(tester.takeException(), isNull);
         await tester.runAsync(() => sesion.iniciarSesion('varios', 'Clave123'));
         for (final ruta in [
+          Rutas.inicio,
+          Rutas.organizacion,
+          Rutas.servicios,
           Rutas.tribunal,
           Rutas.proceso,
           Rutas.miIglesia,
