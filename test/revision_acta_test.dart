@@ -111,6 +111,8 @@ void main() {
       await esperar(tester);
       expect(tec.revisionMesa8, 'VALIDADA');
       expect(find.text('Validada: dato oficial'), findsOneWidget);
+      // La fase la recalcula TEC y la App la muestra tal cual.
+      expect(find.text('5. Validación · Dato oficial'), findsOneWidget);
       expect(find.text('Validar como dato oficial'), findsNothing);
     },
   );

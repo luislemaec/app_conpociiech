@@ -24,7 +24,7 @@ Future<List<int>?> seleccionarFotoActa(ImageSource origen) async {
   return foto == null ? null : await foto.readAsBytes();
 }
 
-/// Escrutinio de la mesa del Presidente: apertura, conteo, cierre y foto del acta física.
+/// Escrutinio de la mesa del Presidente: apertura, conteo, foto del acta física y cierre.
 /// Solo en línea: cada paso se guarda en TEC, que valida de nuevo todas las reglas.
 class PantallaEscrutinio extends StatefulWidget {
   const PantallaEscrutinio({
@@ -199,7 +199,7 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
     }
     await _ejecutar(
       (api) => api.cerrarMesa(votos),
-      'Mesa cerrada. Suba la foto del acta física firmada.',
+      'Mesa cerrada. El acta física queda en revisión del Tribunal.',
     );
   }
 
@@ -257,8 +257,12 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
                     _cabecera(acta),
                     GuiaEscrutinio(acta: acta, modificado: _modificado),
                     if (acta.estado == 'PENDIENTE') _apertura(acta),
-                    if (acta.estado != 'PENDIENTE') _conteo(acta),
-                    if (acta.cerrada) _actaFisica(acta),
+                    // Orden oficial: Apertura → Conteo → Acta física → Cierre → Validación.
+                    if (acta.estado != 'PENDIENTE') ...[
+                      _conteo(acta),
+                      _actaFisica(acta),
+                      if (acta.puedeEditarConteo) _cierre(acta),
+                    ],
                   ],
                 ),
               ),
@@ -269,9 +273,14 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
   Widget _cabecera(ActaPresidente acta) => Seccion(
     titulo: acta.ubicacion.mesa,
     children: [
-      Align(
-        alignment: Alignment.centerLeft,
-        child: EtiquetaEstado(acta.estado),
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          EtiquetaEstado(acta.estado),
+          if (acta.fase != null) EtiquetaFase(acta.fase!),
+        ],
       ),
       const SizedBox(height: 12),
       Dato('Recinto', acta.ubicacion.recinto),
@@ -357,19 +366,11 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
             icon: const Icon(Icons.save_outlined),
             label: const Text('Guardar conteo'),
           ),
-          const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: acta.puedeCerrar && !_modificado && totales != null
-                ? _cerrar
-                : null,
-            icon: const Icon(Icons.lock_outline),
-            label: const Text('Cerrar mesa'),
-          ),
           if (_modificado)
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Guarde el conteo antes de cerrar la mesa.',
+                'Guarde el conteo antes de continuar con el acta física y el cierre.',
                 style: tema.textTheme.bodySmall,
               ),
             ),
@@ -378,34 +379,77 @@ class _PantallaEscrutinioState extends State<PantallaEscrutinio> {
     );
   }
 
-  Widget _actaFisica(ActaPresidente acta) => Seccion(
-    titulo: 'Acta física',
-    children: [
-      if (acta.actaFisica case final a?) ...[
-        Dato('Estado', a.etiqueta),
-        if (a.version != null) Dato('Versión', '${a.version}'),
-        if (a.observacion != null && a.observacion!.isNotEmpty)
-          Dato('Observación', a.observacion),
-      ] else
-        const Text('Aún no se ha enviado la foto del acta firmada.'),
-      if (acta.puedeSubirActaFisica) ...[
+  /// Paso 3. TEC habilita la carga con el conteo guardado (y en mesas cerradas sin acta
+  /// validada); la App solo refleja `puedeSubirActaFisica`.
+  Widget _actaFisica(ActaPresidente acta) {
+    // Subir la foto refresca el acta desde TEC y descartaría cambios sin guardar.
+    final habilitado = !_modificado;
+    return Seccion(
+      titulo: 'Acta física',
+      children: [
+        if (acta.actaFisica case final a?) ...[
+          Dato('Estado', a.etiqueta),
+          if (a.version != null) Dato('Versión', '${a.version}'),
+          if (a.observacion != null && a.observacion!.isNotEmpty)
+            Dato('Observación', a.observacion),
+        ] else
+          Text(
+            acta.puedeSubirActaFisica
+                ? 'Suba la foto del acta física firmada antes de cerrar la mesa.'
+                : 'Disponible cuando el conteo esté guardado.',
+          ),
+        if (acta.puedeSubirActaFisica) ...[
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: habilitado ? () => _subirFoto(ImageSource.camera) : null,
+            icon: const Icon(Icons.photo_camera_outlined),
+            label: Text(
+              acta.actaFisica == null
+                  ? 'Tomar foto del acta'
+                  : 'Enviar otra foto',
+            ),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: habilitado
+                ? () => _subirFoto(ImageSource.gallery)
+                : null,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: const Text('Elegir de la galería'),
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// Paso 4. TEC exige conteo guardado y acta física vigente no devuelta (`puedeCerrar`).
+  Widget _cierre(ActaPresidente acta) {
+    final totales = _totales;
+    final devuelta = const {
+      'OBSERVADA',
+      'RECHAZADA',
+    }.contains(acta.actaFisica?.estadoRevision);
+    return Seccion(
+      titulo: 'Cierre',
+      children: [
+        Text(
+          _modificado
+              ? 'Guarde el conteo antes de cerrar la mesa.'
+              : acta.puedeCerrar
+              ? 'Conteo guardado y acta física cargada: ya puede cerrar la mesa.'
+              : devuelta
+              ? 'El Tribunal devolvió el acta física: envíe una nueva versión para cerrar.'
+              : 'Para cerrar la mesa, guarde el conteo y suba la foto del acta física.',
+        ),
         const SizedBox(height: 12),
         FilledButton.icon(
-          onPressed: () => _subirFoto(ImageSource.camera),
-          icon: const Icon(Icons.photo_camera_outlined),
-          label: Text(
-            acta.actaFisica == null
-                ? 'Tomar foto del acta'
-                : 'Enviar otra foto',
-          ),
-        ),
-        const SizedBox(height: 8),
-        OutlinedButton.icon(
-          onPressed: () => _subirFoto(ImageSource.gallery),
-          icon: const Icon(Icons.photo_library_outlined),
-          label: const Text('Elegir de la galería'),
+          onPressed: acta.puedeCerrar && !_modificado && totales != null
+              ? _cerrar
+              : null,
+          icon: const Icon(Icons.lock_outline),
+          label: const Text('Cerrar mesa'),
         ),
       ],
-    ],
-  );
+    );
+  }
 }

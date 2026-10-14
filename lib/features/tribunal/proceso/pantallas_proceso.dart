@@ -99,7 +99,9 @@ class _Alertas extends StatelessWidget {
   }
 }
 
-/// Estado de cada mesa con filtros por cantón, recinto y estado (filtrado en el dispositivo).
+/// Fase de cada mesa (calculada por TEC, igual que la columna Situación de actaE) con filtros
+/// por cantón, recinto y fase. Todo se filtra y cuenta en el dispositivo sobre una sola
+/// consulta; la App no deduce la fase de otros datos.
 class PantallaAvanceMesas extends StatefulWidget {
   const PantallaAvanceMesas({super.key});
 
@@ -110,7 +112,9 @@ class PantallaAvanceMesas extends StatefulWidget {
 class _PantallaAvanceMesasState extends State<PantallaAvanceMesas> {
   String? _canton;
   String? _recinto;
-  String? _estado;
+
+  /// Código de fase de TEC; null = todas. Filtro exacto, como en actaE.
+  String? _fase;
 
   @override
   Widget build(BuildContext context) {
@@ -127,15 +131,29 @@ class _PantallaAvanceMesasState extends State<PantallaAvanceMesas> {
               if (_canton == null || m.ubicacion.canton == _canton)
                 ?m.ubicacion.recinto,
           }.toList()..sort();
-          final estados = {for (final m in mesas) m.estado}.toList()..sort();
-          final visibles = mesas
+          // Mesas del cantón y recinto elegidos: base de los contadores por fase.
+          final enAlcance = mesas
               .where(
                 (m) =>
                     (_canton == null || m.ubicacion.canton == _canton) &&
-                    (_recinto == null || m.ubicacion.recinto == _recinto) &&
-                    (_estado == null || m.estado == _estado),
+                    (_recinto == null || m.ubicacion.recinto == _recinto),
               )
               .toList();
+          final porFase = <String, int>{};
+          for (final m in enAlcance) {
+            if (m.fase case final f?) {
+              porFase[f.fase] = (porFase[f.fase] ?? 0) + 1;
+            }
+          }
+          // Textos de TEC cuando llegan; el catálogo solo completa fases sin mesas.
+          final etiquetas = {
+            ...FaseEscrutinio.catalogo,
+            for (final m in mesas)
+              if (m.fase case final f?) f.fase: f.etiqueta,
+          };
+          final visibles = _fase == null
+              ? enAlcance
+              : enAlcance.where((m) => m.fase?.fase == _fase).toList();
           return Column(
             children: [
               Padding(
@@ -158,14 +176,13 @@ class _PantallaAvanceMesasState extends State<PantallaAvanceMesas> {
                       opciones: {for (final r in recintos) r: r},
                       cambiar: (v) => setState(() => _recinto = v),
                     ),
-                    const SizedBox(height: 8),
-                    _Filtro(
-                      etiqueta: 'Estado',
-                      valor: _estado,
-                      opciones: {
-                        for (final e in estados) e: EstadoMesa.etiqueta(e),
-                      },
-                      cambiar: (v) => setState(() => _estado = v),
+                    const SizedBox(height: 12),
+                    _FiltroFase(
+                      seleccion: _fase,
+                      total: enAlcance.length,
+                      etiquetas: etiquetas,
+                      cantidades: porFase,
+                      cambiar: (v) => setState(() => _fase = v),
                     ),
                     const SizedBox(height: 8),
                     Align(
@@ -191,19 +208,31 @@ class _PantallaAvanceMesasState extends State<PantallaAvanceMesas> {
                           final m = visibles[i];
                           return ListTile(
                             title: Text(m.ubicacion.mesa),
-                            subtitle: Text(
-                              [
-                                    m.ubicacion.recinto,
-                                    m.ubicacion.lugar,
-                                    m.juntaRegistrada
-                                        ? 'Junta completa'
-                                        : 'Junta incompleta',
-                                  ]
-                                  .whereType<String>()
-                                  .where((t) => t.isNotEmpty)
-                                  .join(' · '),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  [
+                                        m.ubicacion.recinto,
+                                        m.ubicacion.lugar,
+                                        m.juntaRegistrada
+                                            ? 'Junta completa'
+                                            : 'Junta incompleta',
+                                      ]
+                                      .whereType<String>()
+                                      .where((t) => t.isNotEmpty)
+                                      .join(' · '),
+                                ),
+                                if (m.fase != null) ...[
+                                  const SizedBox(height: 4),
+                                  DetalleFase(m.fase!),
+                                ],
+                              ],
                             ),
-                            trailing: EtiquetaEstado(m.estado),
+                            // Fase calculada por TEC (misma que la columna Situación de actaE).
+                            trailing: m.fase == null
+                                ? null
+                                : EtiquetaFase(m.fase!, compacta: true),
                             onTap: m.ubicacion.mesaId == null
                                 ? null
                                 : () => context.go(
@@ -250,6 +279,53 @@ class _Filtro extends StatelessWidget {
           ),
       ],
       onChanged: cambiar,
+    );
+  }
+}
+
+/// Filtro exacto por fase con el número de mesas de cada una (Todas + las cinco fases de
+/// TEC en orden oficial). Los contadores salen de la misma lista que se muestra.
+class _FiltroFase extends StatelessWidget {
+  const _FiltroFase({
+    required this.seleccion,
+    required this.total,
+    required this.etiquetas,
+    required this.cantidades,
+    required this.cambiar,
+  });
+
+  final String? seleccion;
+  final int total;
+  final Map<String, String> etiquetas;
+  final Map<String, int> cantidades;
+  final ValueChanged<String?> cambiar;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget opcion(String? codigo, String texto, int cantidad) => ChoiceChip(
+      label: Text('$texto (${formatoNumero(cantidad)})'),
+      avatar: codigo == null
+          ? null
+          : Icon(EtiquetaFase.icono(codigo), size: 18),
+      showCheckmark: false,
+      selected: seleccion == codigo,
+      onSelected: (_) => cambiar(codigo),
+    );
+    return Semantics(
+      container: true,
+      label: 'Filtrar por fase',
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            opcion(null, 'Todas', total),
+            for (final f in FaseEscrutinio.catalogo.keys)
+              opcion(f, etiquetas[f]!, cantidades[f] ?? 0),
+          ],
+        ),
+      ),
     );
   }
 }

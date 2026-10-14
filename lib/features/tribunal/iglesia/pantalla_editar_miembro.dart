@@ -57,7 +57,12 @@ class _FormularioState extends State<_Formulario> {
   String? _error;
 
   /// Cualquier cambio del formulario: solo reconstruye lo que depende de él (botón).
-  late final Listenable _cambios = Listenable.merge([_nombres, _documento, _sexo, _habilitado]);
+  late final Listenable _cambios = Listenable.merge([
+    _nombres,
+    _documento,
+    _sexo,
+    _habilitado,
+  ]);
 
   bool get _editable => widget.detalle.permiteEdicion && !_guardando;
 
@@ -66,7 +71,8 @@ class _FormularioState extends State<_Formulario> {
       _documento.text.trim() != widget.detalle.documento.trim() ||
       _sexo.value != widget.detalle.sexo;
 
-  bool get _cambiaHabilitacion => _habilitado.value != widget.detalle.habilitado;
+  bool get _cambiaHabilitacion =>
+      _habilitado.value != widget.detalle.habilitado;
 
   @override
   void dispose() {
@@ -99,7 +105,9 @@ class _FormularioState extends State<_Formulario> {
       if (!mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
-        ..showSnackBar(const SnackBar(content: Text('Datos de la persona actualizados.')));
+        ..showSnackBar(
+          const SnackBar(content: Text('Datos de la persona actualizados.')),
+        );
       context.pop(actualizado);
     } on ErrorApi catch (e) {
       // Reglas de TEC (cédula duplicada, cronograma cerrado, sin permiso…): su mensaje.
@@ -153,7 +161,9 @@ class _FormularioState extends State<_Formulario> {
                 enabled: _editable,
                 textCapitalization: TextCapitalization.characters,
                 maxLength: _largoNombres,
-                decoration: const InputDecoration(labelText: 'Apellidos y nombres'),
+                decoration: const InputDecoration(
+                  labelText: 'Apellidos y nombres',
+                ),
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'Ingrese los apellidos y nombres.'
                     : null,
@@ -167,7 +177,8 @@ class _FormularioState extends State<_Formulario> {
                 maxLength: 10,
                 decoration: const InputDecoration(
                   labelText: 'Cédula',
-                  helperText: 'TEC verifica el dígito verificador y que no pertenezca a otra persona.',
+                  helperText:
+                      'TEC verifica el dígito verificador y que no pertenezca a otra persona.',
                   helperMaxLines: 2,
                 ),
                 // El formato se revisa aquí; el dígito verificador y los duplicados, en
@@ -175,7 +186,8 @@ class _FormularioState extends State<_Formulario> {
                 validator: (v) {
                   final valor = v?.trim() ?? '';
                   if (valor.isEmpty) return 'Ingrese la cédula.';
-                  if (valor == detalle.documento.trim()) return null; // sin cambio
+                  if (valor == detalle.documento.trim())
+                    return null; // sin cambio
                   if (!RegExp(r'^\d{10}$').hasMatch(valor)) {
                     return 'La cédula debe tener 10 dígitos.';
                   }
@@ -198,7 +210,9 @@ class _FormularioState extends State<_Formulario> {
                         label: Text(Sexo.texto(valor)),
                         showCheckmark: false,
                         selected: sexo == valor,
-                        onSelected: _editable ? (_) => _sexo.value = valor : null,
+                        onSelected: _editable
+                            ? (_) => _sexo.value = valor
+                            : null,
                       ),
                   ],
                 ),
@@ -237,7 +251,9 @@ class _FormularioState extends State<_Formulario> {
           ListenableBuilder(
             listenable: _cambios,
             builder: (context, _) => FilledButton.icon(
-              onPressed: _editable && (_cambiaPersona || _cambiaHabilitacion) ? _guardar : null,
+              onPressed: _editable && (_cambiaPersona || _cambiaHabilitacion)
+                  ? _guardar
+                  : null,
               icon: _guardando
                   ? const SizedBox.square(
                       dimension: 18,

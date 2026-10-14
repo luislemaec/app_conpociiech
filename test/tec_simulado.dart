@@ -10,6 +10,86 @@ import 'package:app_conpociiech/core/sesion/almacen_tokens.dart';
 import 'package:app_conpociiech/core/sesion/api_autenticacion.dart';
 import 'package:app_conpociiech/core/sesion/sesion_controller.dart';
 
+/// Réplica de prueba de ProgresoEscrutinioDTO.determinar + ConsultaMovilService.fase (TEC).
+/// Solo existe en el simulador: la App nunca calcula la fase, la recibe de TEC.
+Map<String, dynamic> faseSimulada(String estado, String? revision) {
+  final devuelta = revision == 'OBSERVADA' || revision == 'RECHAZADA';
+  final validaParaCierre = revision == 'PENDIENTE_REVISION';
+  final (
+    String fase,
+    String situacion,
+    String? incidencia,
+    bool oficial,
+  ) = switch (estado) {
+    'ANULADO' || 'OBSERVADO' => ('CONTEO', 'Bloqueado', estado, false),
+    'PENDIENTE' => ('APERTURA', 'Pendiente', null, false),
+    'CERRADO' when revision == 'VALIDADA' => (
+      'DATO_OFICIAL',
+      'Dato oficial',
+      null,
+      true,
+    ),
+    'CERRADO' when revision == null || devuelta => (
+      'ACTA_FISICA',
+      revision == null ? 'Pendiente de carga' : 'Pendiente de corrección',
+      revision,
+      false,
+    ),
+    'CERRADO' => ('DATO_OFICIAL', 'Pendiente', null, false),
+    'ABIERTO' => ('CONTEO', 'Pendiente', null, false),
+    _ when validaParaCierre => (
+      'CIERRE',
+      'Pendiente',
+      estado == 'REABIERTO' ? 'REABIERTO' : null,
+      false,
+    ),
+    'CONTEO_REGISTRADO' => (
+      'ACTA_FISICA',
+      devuelta ? 'Pendiente de corrección' : 'Pendiente de carga',
+      devuelta ? revision : null,
+      false,
+    ),
+    _ => (
+      'CONTEO',
+      'En curso',
+      estado == 'REABIERTO' ? 'REABIERTO' : (devuelta ? revision : null),
+      false,
+    ),
+  };
+  const orden = ['APERTURA', 'CONTEO', 'ACTA_FISICA', 'CIERRE', 'DATO_OFICIAL'];
+  const etiquetas = [
+    'Apertura',
+    'Conteo',
+    'Acta física',
+    'Cierre',
+    'Validación',
+  ];
+  const incidencias = {
+    'OBSERVADO': 'Escrutinio observado',
+    'ANULADO': 'Escrutinio anulado',
+    'REABIERTO': 'Escrutinio reabierto',
+    'OBSERVADA': 'Acta física observada',
+    'RECHAZADA': 'Acta física rechazada',
+  };
+  final i = orden.indexOf(fase);
+  return {
+    'fase': fase,
+    'numero': i + 1,
+    'etiqueta': etiquetas[i],
+    'situacion': situacion,
+    'incidencia': incidencia,
+    'incidenciaEtiqueta': incidencias[incidencia],
+    'severidad': incidencia == 'ANULADO' || incidencia == 'RECHAZADA'
+        ? 'danger'
+        : incidencia != null
+        ? 'warning'
+        : oficial
+        ? 'success'
+        : 'info',
+    'oficial': oficial,
+  };
+}
+
 /// Usuario de prueba del servidor simulado (no son credenciales reales).
 class UsuarioSimulado {
   UsuarioSimulado({
@@ -254,6 +334,7 @@ class TecSimulado {
       },
       'puedeRevisarActa':
           tribunal && estadoMesa8 == 'CERRADO' && revisionMesa8 != 'VALIDADA',
+      'fase': faseSimulada(estadoMesa8, revisionMesa8),
     };
     if (actaFisica == null && metodo == 'GET') return _json(200, detalle());
     if (accion == null && metodo == 'GET') {
@@ -302,6 +383,12 @@ class TecSimulado {
     return _json(200, detalle());
   }
 
+  bool get _conteoGuardado =>
+      {'EN_CONTEO', 'CONTEO_REGISTRADO', 'REABIERTO'}.contains(estadoActa);
+
+  bool get _actaValidaParaCierre =>
+      actaFisica?['estadoRevision'] == 'PENDIENTE_REVISION';
+
   Map<String, dynamic> _acta() {
     var emitidos = 0;
     var papeletas = 0;
@@ -334,10 +421,16 @@ class TecSimulado {
           : null,
       'puedeAbrir': estadoActa == 'PENDIENTE' && bloqueoApertura == null,
       'puedeEditarConteo': editables.contains(estadoActa),
-      'puedeCerrar': editables.contains(estadoActa) && estadoActa != 'ABIERTO',
+      // ReglasFlujoEscrutinio: cerrar exige conteo guardado y acta física vigente no devuelta;
+      // el acta se carga con el conteo guardado (o en mesas cerradas sin acta validada).
+      'puedeCerrar': _conteoGuardado && _actaValidaParaCierre,
       'puedeSubirActaFisica':
-          estadoActa == 'CERRADO' &&
+          (_conteoGuardado || estadoActa == 'CERRADO') &&
           actaFisica?['estadoRevision'] != 'VALIDADA',
+      'fase': faseSimulada(
+        estadoActa,
+        actaFisica?['estadoRevision'] as String?,
+      ),
       'categorias': [
         for (final (id, nombre, esPapeletas) in categoriasActa)
           {
@@ -396,12 +489,13 @@ class TecSimulado {
         estadoActa = _acta()['cuadre'] == 0 ? 'CONTEO_REGISTRADO' : 'EN_CONTEO';
         return _json(200, _acta());
       case ('POST', '/tribunal/presidente/acta/cierre'):
-        if (!{
-          'EN_CONTEO',
-          'CONTEO_REGISTRADO',
-          'REABIERTO',
-        }.contains(estadoActa)) {
+        if (!_conteoGuardado) {
           return regla('Debe guardar el conteo antes de cerrar la mesa.');
+        }
+        if (!_actaValidaParaCierre) {
+          return regla(
+            'Cargue el acta física firmada antes de cerrar la mesa.',
+          );
         }
         final v = votos();
         if (v == null)
@@ -416,10 +510,9 @@ class TecSimulado {
         estadoActa = 'CERRADO';
         return _json(200, _acta());
       case ('PUT', '/tribunal/presidente/acta/acta-fisica'):
-        if (estadoActa != 'CERRADO')
-          return regla(
-            'La mesa debe estar cerrada para cargar el acta física.',
-          );
+        if (!(_conteoGuardado || estadoActa == 'CERRADO') ||
+            actaFisica?['estadoRevision'] == 'VALIDADA')
+          return regla('Guarde el conteo antes de cargar el acta física.');
         actaFisica = {
           'version': (actaFisica?['version'] as int? ?? 0) + 1,
           'estadoRevision': 'PENDIENTE_REVISION',
@@ -512,15 +605,27 @@ class TecSimulado {
     if (persona != null) {
       final id = int.parse(persona.group(1)!);
       if (id == miembroDeOtraIglesia) {
-        return _error(403, 'SIN_PERMISO', 'No puede gestionar miembros de otra iglesia.');
+        return _error(
+          403,
+          'SIN_PERMISO',
+          'No puede gestionar miembros de otra iglesia.',
+        );
       }
       final i = miembros.indexWhere((m) => m['id'] == id);
       if (i < 0) {
-        return _error(404, 'MIEMBRO_NO_DISPONIBLE', 'El miembro no existe o ya no está activo en la iglesia.');
+        return _error(
+          404,
+          'MIEMBRO_NO_DISPONIBLE',
+          'El miembro no existe o ya no está activo en la iglesia.',
+        );
       }
       final datos = personas.putIfAbsent(
         id,
-        () => {'nombres': miembros[i]['nombre'], 'documento': '1710034065', 'sexo': miembros[i]['sexo']},
+        () => {
+          'nombres': miembros[i]['nombre'],
+          'documento': '1710034065',
+          'sexo': miembros[i]['sexo'],
+        },
       );
       Map<String, dynamic> detalle() => {
         'id': id,
@@ -530,29 +635,49 @@ class TecSimulado {
         'revisado': miembros[i]['revisado'],
         'permiteEdicion': edicionAbierta,
       };
-      if (persona.group(2) == null && metodo == 'GET') return _json(200, detalle());
+      if (persona.group(2) == null && metodo == 'GET')
+        return _json(200, detalle());
       if (persona.group(2) != null && metodo == 'PUT') {
         if (!edicionAbierta) {
-          return _error(409, 'EDICION_CERRADA', 'La actualización del padrón está cerrada por el cronograma electoral.');
+          return _error(
+            409,
+            'EDICION_CERRADA',
+            'La actualización del padrón está cerrada por el cronograma electoral.',
+          );
         }
         final nombres = (cuerpo['nombres'] as String? ?? '').trim();
         final documento = (cuerpo['documento'] as String? ?? '').trim();
         if (nombres.isEmpty) {
-          return _error(400, 'DATOS_INVALIDOS', 'Los nombres de la persona son obligatorios.');
+          return _error(
+            400,
+            'DATOS_INVALIDOS',
+            'Los nombres de la persona son obligatorios.',
+          );
         }
-        if (!RegExp(r'^\d{10}$').hasMatch(documento) || documento == cedulaInvalida) {
-          return _error(400, 'DATOS_INVALIDOS', 'La cédula ingresada no es válida.');
+        if (!RegExp(r'^\d{10}$').hasMatch(documento) ||
+            documento == cedulaInvalida) {
+          return _error(
+            400,
+            'DATOS_INVALIDOS',
+            'La cédula ingresada no es válida.',
+          );
         }
         if (documento == cedulaDeOtraPersona) {
-          return _error(409, 'DOCUMENTO_DUPLICADO', 'La cédula ingresada ya pertenece a otra persona.');
+          return _error(
+            409,
+            'DOCUMENTO_DUPLICADO',
+            'La cédula ingresada ya pertenece a otra persona.',
+          );
         }
         // Igual que GestionMovilService: datos de la persona (con o sin habilitación) →
         // guardarDesdeDTO; solo habilitación → cambiarHabilitacion; nada → sin guardar.
-        final cambiaPersona = nombres != datos['nombres'] ||
+        final cambiaPersona =
+            nombres != datos['nombres'] ||
             documento != datos['documento'] ||
             cuerpo['sexo'] != datos['sexo'];
         final habilitado = cuerpo['habilitado'] as bool?;
-        final cambiaHabilitacion = habilitado != null && habilitado != miembros[i]['habilitado'];
+        final cambiaHabilitacion =
+            habilitado != null && habilitado != miembros[i]['habilitado'];
         if (cambiaPersona) {
           actualizacionesPersona++;
           datos
@@ -708,6 +833,7 @@ class TecSimulado {
             'ubicacion': ubicacion,
             'estado': 'ABIERTO',
             'juntaRegistrada': true,
+            'fase': faseSimulada('ABIERTO', null),
           },
           {
             'ubicacion': {
@@ -719,6 +845,7 @@ class TecSimulado {
             },
             'estado': 'CERRADO',
             'juntaRegistrada': true,
+            'fase': faseSimulada('CERRADO', 'PENDIENTE_REVISION'),
           },
         ]);
       case '/tribunal/proceso/resultados':

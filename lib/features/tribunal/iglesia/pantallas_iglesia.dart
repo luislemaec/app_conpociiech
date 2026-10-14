@@ -310,7 +310,10 @@ class _FilaMiembro extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(miembro.nombre, style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  miembro.nombre,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 6),
                 Wrap(
                   spacing: 8,

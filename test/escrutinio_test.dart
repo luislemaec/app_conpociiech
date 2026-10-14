@@ -16,6 +16,7 @@ import 'tec_simulado.dart';
 late TecSimulado tec;
 
 Future<void> montar(WidgetTester tester) async {
+  pantallaAlta(tester);
   final sesion = tec.crearSesion();
   await tester.runAsync(() => sesion.iniciarSesion('presidente', 'Clave123'));
   await tester.pumpWidget(
@@ -27,6 +28,31 @@ Future<void> montar(WidgetTester tester) async {
   );
   await tester.pumpAndSettle();
   GoRouter.of(tester.element(find.byType(Scaffold).first)).go(Rutas.escrutinio);
+  await esperar(tester);
+}
+
+/// Pantalla alta: las listas construyen solo lo visible y el flujo ocupa varias secciones.
+void pantallaAlta(WidgetTester tester) {
+  tester.view
+    ..physicalSize = const Size(900, 4000)
+    ..devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+}
+
+/// Monta solo la pantalla de escrutinio con un selector de foto simulado.
+Future<void> montarPantalla(WidgetTester tester, SelectorFoto selector) async {
+  pantallaAlta(tester);
+  final sesion = tec.crearSesion();
+  await tester.runAsync(() => sesion.iniciarSesion('presidente', 'Clave123'));
+  await tester.pumpWidget(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SesionController>.value(value: sesion),
+        Provider<ApiTribunal>.value(value: ApiTribunal(tec.api, sesion)),
+      ],
+      child: MaterialApp(home: PantallaEscrutinio(selectorFoto: selector)),
+    ),
+  );
   await esperar(tester);
 }
 
@@ -109,8 +135,11 @@ void main() {
     expect(find.text('Registrar apertura'), findsNothing);
   });
 
-  testWidgets('flujo completo: apertura, conteo, cierre', (tester) async {
-    await montar(tester);
+  testWidgets('flujo completo: apertura, conteo, acta física, cierre', (
+    tester,
+  ) async {
+    await montarPantalla(tester, (_) async => [0xFF, 0xD8, 0xFF, 0xE0, 1]);
+    expect(find.text('1. Apertura · Pendiente'), findsWidgets);
     expect(find.text('Por abrir'), findsOneWidget);
 
     await tocar(tester, find.text('Registrar apertura'));
@@ -130,18 +159,25 @@ void main() {
     await esperar(tester);
     expect(tec.estadoActa, 'CONTEO_REGISTRADO');
     expect(tec.votosActa, {1: 5, 2: 3, 3: 2});
+    expect(
+      boton(tester, 'Cerrar mesa').onPressed,
+      isNull,
+      reason: 'sin acta física no se puede cerrar',
+    );
+    expect(find.text('3. Acta física · Pendiente de carga'), findsWidgets);
+
+    await tocar(tester, find.text('Tomar foto del acta'));
+    await esperar(tester);
+    expect(tec.actaFisica?['estadoRevision'], 'PENDIENTE_REVISION');
+    expect(find.text('4. Cierre · Pendiente'), findsWidgets);
     expect(boton(tester, 'Cerrar mesa').onPressed, isNotNull);
 
     await tocar(tester, find.text('Cerrar mesa'));
     expect(find.textContaining('Las papeletas cuadran'), findsOneWidget);
     await confirmar(tester, 'Cerrar mesa');
     expect(tec.estadoActa, 'CERRADO');
-    await tester.scrollUntilVisible(
-      find.text('Tomar foto del acta'),
-      200,
-      scrollable: find.byType(Scrollable).first,
-    );
-    expect(find.text('Tomar foto del acta'), findsOneWidget);
+    expect(find.text('5. Validación · Pendiente'), findsWidgets);
+    expect(find.text('Cerrar mesa'), findsNothing);
     expect(
       find.byKey(const ValueKey('categoria-1')).evaluate().isEmpty ||
           tester
@@ -158,7 +194,8 @@ void main() {
   ) async {
     tec
       ..estadoActa = 'CONTEO_REGISTRADO'
-      ..votosActa.addAll({1: 5, 2: 3, 3: 2});
+      ..votosActa.addAll({1: 5, 2: 3, 3: 2})
+      ..actaFisica = {'version': 1, 'estadoRevision': 'PENDIENTE_REVISION'};
     await montar(tester);
     expect(boton(tester, 'Cerrar mesa').onPressed, isNotNull);
     await escribirConteo(tester, 6, 3, 2);
@@ -168,6 +205,33 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('-1 (no cuadra)'), findsOneWidget);
+  });
+
+  testWidgets('con el acta devuelta por el Tribunal se exige una nueva versión', (
+    tester,
+  ) async {
+    tec
+      ..estadoActa = 'REABIERTO'
+      ..votosActa.addAll({1: 5, 2: 3, 3: 2})
+      ..actaFisica = {
+        'version': 1,
+        'estadoRevision': 'OBSERVADA',
+        'observacion': 'Firma ilegible',
+      };
+    await montarPantalla(tester, (_) async => [0xFF, 0xD8, 0xFF, 0xE0, 1]);
+    expect(find.text('Escrutinio reabierto'), findsWidgets);
+    expect(boton(tester, 'Cerrar mesa').onPressed, isNull);
+    expect(
+      find.text(
+        'El Tribunal devolvió el acta física: envíe una nueva versión para cerrar.',
+      ),
+      findsOneWidget,
+    );
+
+    await tocar(tester, find.text('Enviar otra foto'));
+    await esperar(tester);
+    expect(tec.actaFisica?['version'], 2);
+    expect(boton(tester, 'Cerrar mesa').onPressed, isNotNull);
   });
 
   testWidgets('un campo vacío impide guardar', (tester) async {
@@ -234,6 +298,8 @@ void main() {
     ).guardarConteo({1: 4, 2: 1, 3: 3});
     expect(acta.estado, 'EN_CONTEO');
     expect(acta.cuadre, 2);
-    expect(acta.puedeCerrar, isTrue);
+    expect(acta.puedeCerrar, isFalse, reason: 'falta el acta física');
+    expect(acta.puedeSubirActaFisica, isTrue);
+    expect(acta.fase?.fase, 'CONTEO');
   });
 }

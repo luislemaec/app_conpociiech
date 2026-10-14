@@ -217,6 +217,104 @@ class EtiquetaEstado extends StatelessWidget {
       EtiquetaSemantica(texto: EstadoMesa.etiqueta(estado), tono: tono(estado));
 }
 
+/// Fase del escrutinio tal como la calcula TEC. Punto único de la presentación de una fase:
+/// texto (de TEC), ícono por fase y tono según la severidad de TEC WEB (la tabla de actaE
+/// colorea por situación, no por fase). El color nunca va solo: siempre hay texto e ícono.
+///
+/// `compacta` muestra solo «3. Acta física» (para el extremo de una fila, junto a
+/// [DetalleFase]); la forma completa agrega la situación y, debajo, la incidencia.
+class EtiquetaFase extends StatelessWidget {
+  const EtiquetaFase(this.fase, {super.key, this.compacta = false});
+
+  final FaseEscrutinio fase;
+  final bool compacta;
+
+  static TonoSemantico tono(String severidad) => switch (severidad) {
+    'success' => TonoSemantico.exito,
+    'warning' => TonoSemantico.advertencia,
+    'danger' => TonoSemantico.peligro,
+    _ => TonoSemantico.informacion,
+  };
+
+  static IconData icono(String fase, {bool oficial = false}) => switch (fase) {
+    'APERTURA' => Icons.lock_open_outlined,
+    'CONTEO' => Icons.how_to_vote_outlined,
+    'ACTA_FISICA' => Icons.document_scanner_outlined,
+    'CIERRE' => Icons.lock_outline,
+    _ => oficial ? Icons.verified_outlined : Icons.fact_check_outlined,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final etiqueta = EtiquetaSemantica(
+      texto: compacta ? fase.titulo : fase.texto,
+      tono: tono(fase.severidad),
+      icono: icono(fase.fase, oficial: fase.oficial),
+    );
+    if (compacta || fase.incidenciaEtiqueta == null) return etiqueta;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        etiqueta,
+        const SizedBox(height: DisenoApp.xs),
+        _Incidencia(fase),
+      ],
+    );
+  }
+}
+
+/// Situación dentro de la fase («Pendiente de carga») y, si existe, la incidencia
+/// («Escrutinio reabierto»), como debajo de la etiqueta en la columna Situación de actaE.
+class DetalleFase extends StatelessWidget {
+  const DetalleFase(this.fase, {super.key});
+
+  final FaseEscrutinio fase;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text(fase.situacion, style: Theme.of(context).textTheme.bodySmall),
+      if (fase.incidenciaEtiqueta != null) ...[
+        const SizedBox(height: DisenoApp.xs),
+        _Incidencia(fase),
+      ],
+    ],
+  );
+}
+
+class _Incidencia extends StatelessWidget {
+  const _Incidencia(this.fase);
+
+  final FaseEscrutinio fase;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = context.semanticos
+        .de(EtiquetaFase.tono(fase.severidad))
+        .primerPlano;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ExcludeSemantics(
+          child: Icon(Icons.error_outline, size: 16, color: color),
+        ),
+        const SizedBox(width: DisenoApp.xs),
+        Flexible(
+          child: Text(
+            fase.incidenciaEtiqueta!,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: color),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 String formatoNumero(int n) {
   final s = n.abs().toString();
   final partes = <String>[];

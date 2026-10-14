@@ -66,7 +66,9 @@ class ApiTribunal {
 
   /// Datos actuales y editables de la persona de un miembro de la iglesia del usuario.
   Future<MiembroDetalle> detalleMiembro(int miembroId) async =>
-      MiembroDetalle.desdeJson((await _get('/tribunal/iglesia/miembros/$miembroId'))!);
+      MiembroDetalle.desdeJson(
+        (await _get('/tribunal/iglesia/miembros/$miembroId'))!,
+      );
 
   /// Guarda «Datos de la persona»: «Apellidos y Nombres», cédula, sexo y, si se indica,
   /// la habilitación para el padrón (null = sin cambio). TEC valida
@@ -582,6 +584,7 @@ class DetalleMesa {
     this.cuadre,
     this.observacionConteo,
     this.actaFisica,
+    this.fase,
   });
 
   factory DetalleMesa.desdeJson(Map<String, dynamic> j) => DetalleMesa(
@@ -614,6 +617,7 @@ class DetalleMesa {
         ? null
         : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
     puedeRevisarActa: j['puedeRevisarActa'] as bool? ?? false,
+    fase: FaseEscrutinio.opcional(j['fase']),
   );
 
   final Ubicacion ubicacion;
@@ -633,6 +637,7 @@ class DetalleMesa {
 
   /// Mesa cerrada con acta física vigente aún no validada (lo decide TEC).
   final bool puedeRevisarActa;
+  final FaseEscrutinio? fase;
 }
 
 class AvanceMesa {
@@ -640,17 +645,20 @@ class AvanceMesa {
     required this.ubicacion,
     required this.estado,
     required this.juntaRegistrada,
+    this.fase,
   });
 
   factory AvanceMesa.desdeJson(Map<String, dynamic> j) => AvanceMesa(
     ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
     estado: j['estado'] as String? ?? 'PENDIENTE',
     juntaRegistrada: j['juntaRegistrada'] as bool? ?? false,
+    fase: FaseEscrutinio.opcional(j['fase']),
   );
 
   final Ubicacion ubicacion;
   final String estado;
   final bool juntaRegistrada;
+  final FaseEscrutinio? fase;
 }
 
 class ResultadoCategoria {
@@ -762,6 +770,69 @@ class ActaFisicaInfo {
   };
 }
 
+/// Fase del escrutinio calculada por TEC (misma proyección que el avance de TEC WEB).
+/// La App la muestra tal cual; no reconstruye la fase a partir de estados ni indicadores.
+/// Orden oficial: 1 Apertura → 2 Conteo → 3 Acta física → 4 Cierre → 5 Validación.
+class FaseEscrutinio {
+  const FaseEscrutinio({
+    required this.fase,
+    required this.numero,
+    required this.etiqueta,
+    required this.situacion,
+    required this.severidad,
+    required this.oficial,
+    this.incidencia,
+    this.incidenciaEtiqueta,
+  });
+
+  factory FaseEscrutinio.desdeJson(Map<String, dynamic> j) => FaseEscrutinio(
+    fase: j['fase'] as String? ?? '',
+    numero: _entero(j['numero']),
+    etiqueta: j['etiqueta'] as String? ?? '',
+    situacion: j['situacion'] as String? ?? '',
+    incidencia: j['incidencia'] as String?,
+    incidenciaEtiqueta: j['incidenciaEtiqueta'] as String?,
+    severidad: j['severidad'] as String? ?? 'info',
+    oficial: j['oficial'] as bool? ?? false,
+  );
+
+  static FaseEscrutinio? opcional(Object? j) =>
+      j is Map<String, dynamic> ? FaseEscrutinio.desdeJson(j) : null;
+
+  /// APERTURA, CONTEO, ACTA_FISICA, CIERRE o DATO_OFICIAL.
+  final String fase;
+
+  /// Posición 1..5 en el orden oficial.
+  final int numero;
+  final String etiqueta;
+  final String situacion;
+
+  /// OBSERVADO, ANULADO, REABIERTO, OBSERVADA o RECHAZADA; null sin incidencia.
+  final String? incidencia;
+  final String? incidenciaEtiqueta;
+
+  /// success, info, warning o danger (la misma severidad que TEC WEB).
+  final String severidad;
+  final bool oficial;
+
+  /// Fase con su número: «3. Acta física».
+  String get titulo => '$numero. $etiqueta';
+
+  /// Texto completo: «3. Acta física · Pendiente de carga».
+  String get texto => '$titulo · $situacion';
+
+  /// Códigos de fase de TEC (`ProgresoEscrutinioDTO.Etapa`) en el orden oficial, con el
+  /// texto de TEC WEB. Solo sirve para ofrecer las cinco opciones del filtro aunque alguna
+  /// no tenga mesas; la fase de cada mesa siempre llega de TEC.
+  static const Map<String, String> catalogo = {
+    'APERTURA': 'Apertura',
+    'CONTEO': 'Conteo',
+    'ACTA_FISICA': 'Acta física',
+    'CIERRE': 'Cierre',
+    'DATO_OFICIAL': 'Validación',
+  };
+}
+
 /// Escrutinio de la mesa del Presidente. Los indicadores `puede*` los calcula TEC; la App
 /// solo los usa para mostrar u ocultar acciones (TEC vuelve a validar cada paso).
 class ActaPresidente {
@@ -780,6 +851,7 @@ class ActaPresidente {
     this.observacionConteo,
     this.motivoBloqueoApertura,
     this.actaFisica,
+    this.fase,
   });
 
   factory ActaPresidente.desdeJson(Map<String, dynamic> j) => ActaPresidente(
@@ -802,6 +874,7 @@ class ActaPresidente {
     actaFisica: j['actaFisica'] == null
         ? null
         : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
+    fase: FaseEscrutinio.opcional(j['fase']),
   );
 
   final Ubicacion ubicacion;
@@ -820,6 +893,7 @@ class ActaPresidente {
   final bool puedeSubirActaFisica;
   final List<CategoriaConteo> categorias;
   final ActaFisicaInfo? actaFisica;
+  final FaseEscrutinio? fase;
 
   bool get cerrada => estado == 'CERRADO';
 }

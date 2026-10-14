@@ -159,9 +159,14 @@ class _PantallaDetalleMesaState extends State<PantallaDetalleMesa> {
                     Seccion(
                       titulo: mesa.ubicacion.mesa,
                       children: [
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: EtiquetaEstado(mesa.estado),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            EtiquetaEstado(mesa.estado),
+                            if (mesa.fase != null) EtiquetaFase(mesa.fase!),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Dato('Recinto', mesa.ubicacion.recinto),
