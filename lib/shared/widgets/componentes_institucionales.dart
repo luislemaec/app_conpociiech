@@ -7,13 +7,6 @@ import '../tema/diseno_app.dart';
 /// adaptados de app_consejo (`EncabezadoInstitucional`, `SeccionCard`,
 /// `ServicioDestacadoCard`, `ContentLimiter`) a los colores del Tribunal.
 
-/// Degradado institucional: solo tokens de [ColoresTribunal].
-const LinearGradient degradadoInstitucional = LinearGradient(
-  begin: Alignment.topLeft,
-  end: Alignment.bottomRight,
-  colors: [ColoresTribunal.primario800, ColoresTribunal.primario],
-);
-
 /// Centra el contenido y limita su ancho en tablets para no estirar líneas ni tarjetas.
 class ContenidoLimitado extends StatelessWidget {
   const ContenidoLimitado({
@@ -37,7 +30,7 @@ class ContenidoLimitado extends StatelessWidget {
   }
 }
 
-/// Encabezado de sección principal: bloque con degradado azul, ícono, título y texto.
+/// Encabezado de pantalla: ícono, título y descripción, plano (sin degradado ni sombra).
 class EncabezadoInstitucional extends StatelessWidget {
   const EncabezadoInstitucional({
     super.key,
@@ -53,49 +46,32 @@ class EncabezadoInstitucional extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final texto = Theme.of(context).textTheme;
-    return Container(
-      padding: const EdgeInsets.all(DisenoApp.lg),
-      decoration: BoxDecoration(
-        gradient: degradadoInstitucional,
-        borderRadius: BorderRadius.circular(DisenoApp.radio),
-        boxShadow: [
-          BoxShadow(
-            color: ColoresTribunal.primario800.withValues(alpha: 0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: DisenoApp.sm),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 44,
-            height: 44,
+            width: DisenoApp.minimoTactil,
+            height: DisenoApp.minimoTactil,
             decoration: BoxDecoration(
-              color: ColoresTribunal.sobreColor.withValues(alpha: 0.14),
+              color: ColoresTribunal.primario50,
               borderRadius: BorderRadius.circular(DisenoApp.radioIcono),
-              border: Border.all(
-                color: ColoresTribunal.sobreColor.withValues(alpha: 0.18),
-              ),
             ),
-            child: Icon(icono, color: ColoresTribunal.sobreColor),
+            child: Icon(icono, color: ColoresTribunal.primario),
           ),
-          const SizedBox(height: DisenoApp.md),
-          Text(
-            titulo,
-            style: texto.titleLarge?.copyWith(
-              color: ColoresTribunal.sobreColor,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
-            ),
-          ),
-          const SizedBox(height: DisenoApp.sm),
-          Text(
-            descripcion,
-            style: texto.bodyMedium?.copyWith(
-              color: ColoresTribunal.sobreColor.withValues(alpha: 0.9),
-              height: 1.45,
+          const SizedBox(width: DisenoApp.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Semantics(
+                  header: true,
+                  child: Text(titulo, style: texto.titleLarge),
+                ),
+                const SizedBox(height: DisenoApp.xs),
+                Text(descripcion, style: texto.bodyMedium),
+              ],
             ),
           ),
         ],
@@ -142,12 +118,10 @@ class SeccionCard extends StatelessWidget {
                   child: Semantics(
                     header: true,
                     child: Text(
-                      titulo.toUpperCase(),
-                      style: const TextStyle(
+                      titulo,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: ColoresTribunal.azulInstitucional,
-                        fontSize: 13,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
                       ),
                     ),
                   ),
@@ -297,6 +271,51 @@ class _TarjetaServicioState extends State<TarjetaServicio> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Fila informativa dentro de una sección (sin tarjeta propia): ícono, título y texto.
+/// Para listas de contenido de solo lectura, separadas con [Divider].
+class FilaInformativa extends StatelessWidget {
+  const FilaInformativa({
+    super.key,
+    required this.icono,
+    required this.titulo,
+    required this.descripcion,
+  });
+
+  final IconData icono;
+  final String titulo;
+  final String descripcion;
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: DisenoApp.sm + DisenoApp.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ExcludeSemantics(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Icon(icono, size: 22, color: ColoresTribunal.primario),
+            ),
+          ),
+          const SizedBox(width: DisenoApp.md),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo, style: texto.titleMedium),
+                const SizedBox(height: DisenoApp.xs),
+                Text(descripcion, style: texto.bodyMedium),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

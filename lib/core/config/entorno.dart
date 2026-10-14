@@ -1,28 +1,56 @@
 import 'package:flutter/foundation.dart';
 
-/// Configuración de la App por entorno, recibida al compilar con `--dart-define`
-/// (nunca hay secretos ni API keys en el código).
+/// Ambiente al que apunta la App.
+enum Ambiente {
+  desarrollo('DESARROLLO'),
+  produccion('PRODUCCION');
+
+  const Ambiente(this.clave);
+
+  /// Valor de `AMBIENTE` en los archivos de `config/`.
+  final String clave;
+
+  static Ambiente desdeClave(String clave) {
+    final normalizada = clave.trim().toUpperCase();
+    for (final a in values) {
+      if (a.clave == normalizada) return a;
+    }
+    throw ArgumentError.value(clave, 'AMBIENTE', 'debe ser DESARROLLO o PRODUCCION');
+  }
+}
+
+/// Configuración única de la App (la «AppConfig»): ambiente y URL base de la API de TEC.
+/// `ClienteApi` la recibe y todos los servicios (`ApiAutenticacion`, `ApiTribunal`,
+/// avisos push) la usan; no hay URLs en otros archivos. Se recibe al compilar con
+/// `--dart-define-from-file`, nunca con secretos:
 ///
-/// Ejemplo:
-/// `flutter run --dart-define=API_BASE_URL=https://tribunal.conpociiech.org/api/v1`
+/// - Producción: `flutter build appbundle --dart-define-from-file=config/produccion.json`
+/// - Desarrollo: `flutter run --dart-define-from-file=config/desarrollo.json`
 ///
-/// Desarrollo contra TEC en la PC: `flutter run --dart-define-from-file=entorno_local.json`
-/// (ver README, «Probar contra TEC local»).
+/// Sin archivo se usa producción (valor seguro para un APK publicado); en debug la
+/// pantalla de inicio de sesión muestra a qué ambiente apunta.
 class Entorno {
-  const Entorno._(this.apiBaseUrl, this.caDesarrollo);
+  const Entorno._(this.ambiente, this.apiBaseUrl, this.caDesarrollo);
+
+  final Ambiente ambiente;
 
   /// URL base de la API de TEC. Solo HTTPS: la información electoral no viaja en claro.
   final Uri apiBaseUrl;
 
-  /// Certificado PEM de una CA local de desarrollo (mkcert) en la que se confía además
-  /// de las CA del sistema. Siempre `null` en compilaciones release: el APK publicado
-  /// nunca confía en una CA local.
+  /// Certificado de una CA local de desarrollo (mkcert) en la que se confía además de las
+  /// CA del sistema. Solo en DESARROLLO y fuera de release: el APK publicado nunca confía
+  /// en una CA local.
   final String? caDesarrollo;
 
   static const String urlPorDefecto = 'https://tribunal.conpociiech.org/api/v1';
 
+  bool get esProduccion => ambiente == Ambiente.produccion;
+
   factory Entorno.desdeDefinicion() => Entorno.desdeUrl(
     const String.fromEnvironment('API_BASE_URL', defaultValue: urlPorDefecto),
+    ambiente: Ambiente.desdeClave(
+      const String.fromEnvironment('AMBIENTE', defaultValue: 'PRODUCCION'),
+    ),
     caDesarrollo: const String.fromEnvironment('CA_DESARROLLO'),
   );
 
@@ -30,6 +58,7 @@ class Entorno {
   /// configuración insegura.
   factory Entorno.desdeUrl(
     String url, {
+    Ambiente ambiente = Ambiente.produccion,
     String? caDesarrollo,
     bool release = kReleaseMode,
   }) {
@@ -42,6 +71,11 @@ class Entorno {
       );
     }
     final ca = caDesarrollo?.trim();
-    return Entorno._(uri, release || ca == null || ca.isEmpty ? null : ca);
+    final usarCa = !release && ambiente == Ambiente.desarrollo && ca != null && ca.isNotEmpty;
+    return Entorno._(ambiente, uri, usarCa ? ca : null);
   }
+
+  /// Texto para identificar el ambiente en pantalla (solo fuera de producción o en debug).
+  String get descripcion =>
+      '${esProduccion ? 'Producción' : 'Desarrollo'} · ${apiBaseUrl.host}';
 }

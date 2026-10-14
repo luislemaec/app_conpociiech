@@ -151,6 +151,6 @@ void main() {
     expect(find.byType(LogoTribunal), findsOneWidget);
     await tocar(tester, find.byTooltip('Servicios'));
     expect(find.byType(PantallaTribunal), findsNothing);
-    expect(find.text('Servicios electorales'.toUpperCase()), findsOneWidget);
+    expect(find.text('Servicios electorales'), findsOneWidget);
   });
 }

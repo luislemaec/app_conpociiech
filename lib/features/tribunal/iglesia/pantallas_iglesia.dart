@@ -5,11 +5,11 @@ import '../../../shared/widgets/estructura_adaptativa.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../../core/api/cliente_api.dart';
 import '../../../core/router/app_router.dart';
 import '../api_tribunal.dart';
 import '../widgets_tribunal.dart';
 import '../../../shared/widgets/estados_app.dart';
+import '../../../shared/widgets/etiquetas.dart';
 
 /// Datos y resumen de miembros de la iglesia asignada al IglesiaAdmin.
 class PantallaMiIglesia extends StatelessWidget {
@@ -104,10 +104,6 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
   String? _error;
   int _consulta = 0;
 
-  /// Lo indica TEC según el cronograma; TEC vuelve a validarlo al guardar.
-  bool _permiteEdicion = false;
-  final Set<int> _guardando = {};
-
   @override
   void initState() {
     super.initState();
@@ -115,71 +111,26 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
       if (_desplazamiento.position.extentAfter < 300) _cargarMas();
     });
     _reiniciar();
-    _consultarEdicion();
   }
 
-  Future<void> _consultarEdicion() async {
-    try {
-      final iglesia = await context.read<ApiTribunal>().iglesia();
-      if (mounted) setState(() => _permiteEdicion = iglesia.permiteEdicion);
-    } catch (_) {
-      // Sin el dato no se ofrece editar; la lista se sigue mostrando.
-    }
-  }
-
-  /// Pide confirmación, guarda en TEC y actualiza la fila. Ante un error se informa y la
-  /// fila conserva el valor que tenía.
-  Future<void> _cambiarHabilitacion(Miembro miembro, bool habilitado) async {
-    final confirmado = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(habilitado ? 'Habilitar miembro' : 'Quitar habilitación'),
-        content: Text(
-          habilitado
-              ? '¿Habilitar a ${miembro.nombre} para participar en las elecciones?'
-              : '¿${miembro.nombre} dejará de estar habilitado para participar en las elecciones?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(habilitado ? 'Habilitar' : 'Quitar habilitación'),
-          ),
-        ],
-      ),
+  /// Única entrada a la edición: abre «Datos de la persona» (que consulta el detalle
+  /// actualizado a TEC) y, si se guardó, actualiza solo esa fila, sin recargar la lista.
+  Future<void> _editar(Miembro miembro) async {
+    final actualizado = await context.push<MiembroDetalle>(
+      Rutas.editarMiembro(miembro.id),
     );
-    if (confirmado != true || !mounted) return;
-    final api = context.read<ApiTribunal>();
-    final mensajes = ScaffoldMessenger.of(context);
-    setState(() => _guardando.add(miembro.id));
-    String aviso;
-    try {
-      final actualizado = await api.cambiarHabilitacion(miembro.id, habilitado);
-      if (!mounted) return;
-      setState(() {
-        final i = _miembros.indexWhere((m) => m.id == miembro.id);
-        if (i >= 0) _miembros[i] = actualizado;
-      });
-      aviso = actualizado.habilitado
-          ? '${actualizado.nombre} quedó habilitado para participar.'
-          : '${actualizado.nombre} quedó como no habilitado.';
-    } on ErrorApi catch (e) {
-      // La fase del cronograma pudo cerrarse mientras la pantalla estaba abierta.
-      if (e.codigo == 'EDICION_CERRADA' && mounted) {
-        setState(() => _permiteEdicion = false);
-      }
-      aviso = e.mensaje;
-    } catch (e) {
-      aviso = mensajeDeError(e);
-    } finally {
-      if (mounted) setState(() => _guardando.remove(miembro.id));
-    }
-    mensajes
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(aviso)));
+    if (actualizado == null || !mounted) return;
+    final i = _miembros.indexWhere((m) => m.id == actualizado.id);
+    if (i < 0) return;
+    setState(() {
+      _miembros[i] = Miembro(
+        id: actualizado.id,
+        nombre: actualizado.nombre,
+        sexo: actualizado.sexo,
+        habilitado: actualizado.habilitado,
+        revisado: actualizado.revisado,
+      );
+    });
   }
 
   @override
@@ -245,6 +196,7 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
 
   @override
   Widget build(BuildContext context) {
+    final tema = Theme.of(context);
     return EstructuraAdaptativa(
       appBar: AppBar(title: const Text('Miembros')),
       body: Column(
@@ -270,16 +222,13 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
                   (true, 'Habilitados'),
                   (false, 'No habilitados'),
                 ])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(texto),
-                      selected: _habilitado == valor,
-                      onSelected: (_) {
-                        _habilitado = valor;
-                        _reiniciar();
-                      },
-                    ),
+                  ChoiceChip(
+                    label: Text(texto),
+                    selected: _habilitado == valor,
+                    onSelected: (_) {
+                      _habilitado = valor;
+                      _reiniciar();
+                    },
                   ),
                 // Se combina con el filtro de habilitación (p. ej. no habilitados sin revisar).
                 FilterChip(
@@ -294,39 +243,17 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 _soloPendientes
                     ? '${formatoNumero(_total)} pendientes de revisión'
                     : '${formatoNumero(_total)} miembros',
+                style: tema.textTheme.bodySmall,
               ),
             ),
           ),
-          if (_soloPendientes && _permiteEdicion)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'Cambiar la habilitación de un miembro lo marca como revisado. '
-                  'Para revisar o corregir sus datos personales use la web.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ),
-          if (!_permiteEdicion)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'La habilitación solo se puede cambiar en la fase del cronograma que lo permite.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-              ),
-            ),
           Expanded(child: _lista()),
         ],
       ),
@@ -359,38 +286,52 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
           );
         }
         final m = _miembros[i];
-        final revisado = m.revisado
-            ? const Tooltip(
-                message: 'Información revisada',
-                child: Icon(Icons.verified_outlined, size: 20),
-              )
-            : null;
-        final estado = [
-          m.habilitado ? 'Habilitado para participar' : 'No habilitado',
-          if (!m.revisado) 'Pendiente de revisión',
-        ].join(' · ');
-        if (!_permiteEdicion) {
-          return ListTile(
-            title: Text(m.nombre),
-            subtitle: Text(estado),
-            trailing: revisado,
-          );
-        }
-        final guardando = _guardando.contains(m.id);
-        return SwitchListTile(
-          title: Row(
-            children: [
-              Expanded(child: Text(m.nombre)),
-              ?revisado,
-            ],
-          ),
-          subtitle: Text(guardando ? 'Guardando…' : estado),
-          value: m.habilitado,
-          onChanged: guardando
-              ? null
-              : (valor) => _cambiarHabilitacion(m, valor),
-        );
+        return _FilaMiembro(miembro: m, alEditar: () => _editar(m));
       },
+    );
+  }
+}
+
+/// Fila de consulta de un miembro: nombre, sexo, estado del padrón, revisión pendiente y
+/// el lápiz como única acción. No contiene controles editables.
+class _FilaMiembro extends StatelessWidget {
+  const _FilaMiembro({required this.miembro, required this.alEditar});
+
+  final Miembro miembro;
+  final VoidCallback alEditar;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 4, 12),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(miembro.nombre, style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    DatoSexo(miembro.sexo),
+                    EtiquetaPadron(habilitado: miembro.habilitado),
+                    if (!miembro.revisado) const EtiquetaPendienteRevision(),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: 'Editar datos de ${miembro.nombre}',
+            onPressed: alEditar,
+          ),
+        ],
+      ),
     );
   }
 }

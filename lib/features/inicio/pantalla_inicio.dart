@@ -81,53 +81,37 @@ class _Identidad extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final texto = Theme.of(context).textTheme;
+    // Identidad plana: logo, nombre, subtítulo y lema, sin degradados ni sombras.
     return Card(
       margin: EdgeInsets.zero,
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              DisenoApp.lg,
-              DisenoApp.lg,
-              DisenoApp.lg,
-              DisenoApp.md,
+      child: Padding(
+        padding: const EdgeInsets.all(DisenoApp.lg),
+        child: Column(
+          children: [
+            const LogoInstitucional(ancho: 150),
+            const SizedBox(height: DisenoApp.md),
+            Text(
+              ContenidoInstitucional.sigla,
+              textAlign: TextAlign.center,
+              style: texto.headlineSmall,
             ),
-            child: Column(
-              children: [
-                const LogoInstitucional(ancho: 170),
-                const SizedBox(height: DisenoApp.md),
-                Text(
-                  ContenidoInstitucional.sigla,
-                  textAlign: TextAlign.center,
-                  style: texto.headlineSmall,
-                ),
-                const SizedBox(height: DisenoApp.xs),
-                Text(
-                  ContenidoInstitucional.subtitulo,
-                  textAlign: TextAlign.center,
-                  style: texto.titleMedium,
-                ),
-              ],
+            const SizedBox(height: DisenoApp.xs),
+            Text(
+              ContenidoInstitucional.subtitulo,
+              textAlign: TextAlign.center,
+              style: texto.titleMedium,
             ),
-          ),
-          Container(
-            decoration: const BoxDecoration(gradient: degradadoInstitucional),
-            padding: const EdgeInsets.symmetric(
-              horizontal: DisenoApp.md,
-              vertical: DisenoApp.sm + DisenoApp.xs,
-            ),
-            child: Text(
+            const SizedBox(height: DisenoApp.sm),
+            Text(
               ContenidoInstitucional.lema,
               textAlign: TextAlign.center,
               style: texto.bodyMedium?.copyWith(
-                color: ColoresTribunal.sobreColor,
+                color: ColoresTribunal.primario,
                 fontWeight: FontWeight.w500,
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

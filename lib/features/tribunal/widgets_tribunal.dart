@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../core/api/cliente_api.dart';
 import '../../shared/widgets/estados_app.dart';
+import '../../shared/tema/colores_semanticos.dart';
+import '../../shared/widgets/etiquetas.dart';
 import '../../shared/tema/diseno_app.dart';
 import 'api_tribunal.dart';
 
@@ -202,35 +204,17 @@ class EtiquetaEstado extends StatelessWidget {
 
   final String estado;
 
+  /// Misma severidad que el dashboard de TEC WEB (DashboardController.severidadEstado).
+  static TonoSemantico tono(String estado) => switch (estado) {
+    'CERRADO' => TonoSemantico.exito,
+    'OBSERVADO' || 'ANULADO' => TonoSemantico.peligro,
+    'PENDIENTE' => TonoSemantico.neutro,
+    _ => TonoSemantico.advertencia,
+  };
+
   @override
-  Widget build(BuildContext context) {
-    final esquema = Theme.of(context).colorScheme;
-    final (fondo, texto) = switch (estado) {
-      'CERRADO' => (esquema.primaryContainer, esquema.onPrimaryContainer),
-      'OBSERVADO' ||
-      'ANULADO' => (esquema.errorContainer, esquema.onErrorContainer),
-      'PENDIENTE' => (
-        esquema.surfaceContainerHighest,
-        esquema.onSurfaceVariant,
-      ),
-      _ => (esquema.secondaryContainer, esquema.onSecondaryContainer),
-    };
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: fondo,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        child: Text(
-          EstadoMesa.etiqueta(estado),
-          style: Theme.of(
-            context,
-          ).textTheme.labelMedium?.copyWith(color: texto),
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) =>
+      EtiquetaSemantica(texto: EstadoMesa.etiqueta(estado), tono: tono(estado));
 }
 
 String formatoNumero(int n) {

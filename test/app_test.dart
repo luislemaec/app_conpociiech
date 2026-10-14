@@ -242,33 +242,32 @@ void main() {
       expect(() => Entorno.desdeUrl('/api/v1'), throwsArgumentError);
     });
 
-    test('la CA de desarrollo solo se usa fuera de release', () {
+    test('la CA de desarrollo solo se usa en DESARROLLO y fuera de release', () {
       const ca =
           '  -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----  ';
+      Entorno desarrollo({String? conCa = ca, bool release = false}) => Entorno.desdeUrl(
+        'https://10.10.8.14/api/v1',
+        ambiente: Ambiente.desarrollo,
+        caDesarrollo: conCa,
+        release: release,
+      );
+      expect(desarrollo(release: true).caDesarrollo, isNull);
+      expect(desarrollo().caDesarrollo, startsWith('-----BEGIN CERTIFICATE-----'));
+      expect(desarrollo(conCa: ' ').caDesarrollo, isNull);
+      // Producción nunca confía en una CA local, aunque se pase por error.
       expect(
-        Entorno.desdeUrl(
-          'https://10.10.8.14/api/v1',
-          caDesarrollo: ca,
-          release: true,
-        ).caDesarrollo,
+        Entorno.desdeUrl('https://tribunal.conpociiech.org/api/v1', caDesarrollo: ca, release: false)
+            .caDesarrollo,
         isNull,
       );
-      expect(
-        Entorno.desdeUrl(
-          'https://10.10.8.14/api/v1',
-          caDesarrollo: ca,
-          release: false,
-        ).caDesarrollo,
-        startsWith('-----BEGIN CERTIFICATE-----'),
-      );
-      expect(
-        Entorno.desdeUrl(
-          'https://10.10.8.14/api/v1',
-          caDesarrollo: ' ',
-          release: false,
-        ).caDesarrollo,
-        isNull,
-      );
+    });
+
+    test('el ambiente es explícito y por defecto producción', () {
+      final produccion = Entorno.desdeUrl(Entorno.urlPorDefecto);
+      expect(produccion.esProduccion, isTrue);
+      expect(produccion.descripcion, 'Producción · tribunal.conpociiech.org');
+      expect(Ambiente.desdeClave(' desarrollo '), Ambiente.desarrollo);
+      expect(() => Ambiente.desdeClave('QA'), throwsArgumentError);
     });
 
     test(

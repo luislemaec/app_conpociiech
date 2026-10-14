@@ -64,6 +64,36 @@ class ApiTribunal {
     return Miembro.desdeJson(json!);
   }
 
+  /// Datos actuales y editables de la persona de un miembro de la iglesia del usuario.
+  Future<MiembroDetalle> detalleMiembro(int miembroId) async =>
+      MiembroDetalle.desdeJson((await _get('/tribunal/iglesia/miembros/$miembroId'))!);
+
+  /// Guarda «Datos de la persona»: «Apellidos y Nombres», cédula, sexo y, si se indica,
+  /// la habilitación para el padrón (null = sin cambio). TEC valida
+  /// el alcance, el cronograma, la cédula y la iglesia activa con las reglas de la web.
+  Future<MiembroDetalle> actualizarPersona(
+    int miembroId, {
+    required String nombres,
+    required String documento,
+    String? sexo,
+    bool? habilitado,
+  }) async {
+    final json = await _sesion.autenticada(
+      (token) => _cliente.enviar(
+        'PUT',
+        '/tribunal/iglesia/miembros/$miembroId/persona',
+        token: token,
+        cuerpo: {
+          'nombres': nombres,
+          'documento': documento,
+          'sexo': sexo,
+          'habilitado': ?habilitado,
+        },
+      ),
+    );
+    return MiembroDetalle.desdeJson(json!);
+  }
+
   // ---------------------------------------------------------------- Escrutinio del Presidente
 
   static const String _acta = '/tribunal/presidente/acta';
@@ -387,6 +417,7 @@ class Miembro {
   const Miembro({
     required this.id,
     required this.nombre,
+    this.sexo,
     required this.habilitado,
     required this.revisado,
   });
@@ -394,14 +425,60 @@ class Miembro {
   factory Miembro.desdeJson(Map<String, dynamic> j) => Miembro(
     id: _entero(j['id']),
     nombre: j['nombre'] as String? ?? '',
+    sexo: j['sexo'] as String?,
     habilitado: j['habilitado'] as bool? ?? false,
     revisado: j['revisado'] as bool? ?? false,
   );
 
   final int id;
   final String nombre;
+
+  /// `M`, `F` o `null` (valor almacenado en TEC).
+  final String? sexo;
   final bool habilitado;
   final bool revisado;
+}
+
+/// Datos editables de la persona de un miembro (`GET /tribunal/iglesia/miembros/{id}`).
+class MiembroDetalle {
+  const MiembroDetalle({
+    required this.id,
+    required this.nombre,
+    required this.nombres,
+    required this.documento,
+    required this.sexo,
+    required this.habilitado,
+    required this.revisado,
+    required this.permiteEdicion,
+  });
+
+  factory MiembroDetalle.desdeJson(Map<String, dynamic> j) => MiembroDetalle(
+    id: _entero(j['id']),
+    nombre: j['nombre'] as String? ?? j['nombres'] as String? ?? '',
+    nombres: j['nombres'] as String? ?? '',
+    documento: j['documento'] as String? ?? '',
+    sexo: j['sexo'] as String?,
+    habilitado: j['habilitado'] as bool? ?? false,
+    revisado: j['revisado'] as bool? ?? false,
+    permiteEdicion: j['permiteEdicion'] as bool? ?? false,
+  );
+
+  final int id;
+
+  /// Nombre para mostrar, igual que en la lista (apellidos y nombres).
+  final String nombre;
+
+  /// «Apellidos y Nombres», igual que el formulario web.
+  final String nombres;
+  final String documento;
+
+  /// `M`, `F` o `null`.
+  final String? sexo;
+  final bool habilitado;
+  final bool revisado;
+
+  /// El cronograma vigente permite editar el padrón.
+  final bool permiteEdicion;
 }
 
 class PaginaMiembros {

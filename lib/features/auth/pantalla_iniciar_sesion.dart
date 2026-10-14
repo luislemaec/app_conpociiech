@@ -1,10 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/api/cliente_api.dart';
+import '../../core/config/entorno.dart';
 import '../../core/router/app_router.dart';
 import '../../core/sesion/sesion_controller.dart';
+import '../../shared/tema/colores_semanticos.dart';
+import '../../shared/widgets/etiquetas.dart';
 import '../../shared/widgets/logo_institucional.dart';
 
 /// Formulario de inicio de sesión con las credenciales de TEC. Al autenticarse, la guarda
@@ -73,6 +77,7 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
+    final entorno = context.read<Entorno>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Iniciar sesión'),
@@ -108,32 +113,24 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                         textAlign: TextAlign.center,
                         style: tema.textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 24),
-                      if (_aviso != null) ...[
-                        Card(
-                          color: tema.colorScheme.secondaryContainer,
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  color: tema.colorScheme.onSecondaryContainer,
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Text(
-                                    _aviso!,
-                                    style: tema.textTheme.bodyMedium?.copyWith(
-                                      color:
-                                          tema.colorScheme.onSecondaryContainer,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                      // A qué servidor se envían las credenciales: siempre fuera de
+                      // producción y, en compilaciones de desarrollo, también en producción.
+                      if (!entorno.esProduccion || !kReleaseMode) ...[
+                        const SizedBox(height: 8),
+                        Center(
+                          // Desarrollo pide atención (advertencia); producción, información.
+                          child: EtiquetaSemantica(
+                            texto: 'Ambiente: ${entorno.descripcion}',
+                            tono: entorno.esProduccion
+                                ? TonoSemantico.informacion
+                                : TonoSemantico.advertencia,
+                            icono: entorno.esProduccion ? Icons.public : Icons.developer_mode,
                           ),
                         ),
+                      ],
+                      const SizedBox(height: 24),
+                      if (_aviso != null) ...[
+                        AvisoSemantico(_aviso!),
                         const SizedBox(height: 16),
                       ],
                       Text(

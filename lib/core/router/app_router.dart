@@ -5,6 +5,7 @@ import '../../features/auth/pantalla_iniciar_sesion.dart';
 import '../../features/inicio/pantalla_inicio.dart';
 import '../../features/organizacion/pantalla_organizacion.dart';
 import '../../features/servicios/pantalla_servicios.dart';
+import '../../features/tribunal/iglesia/pantalla_editar_miembro.dart';
 import '../../features/tribunal/iglesia/pantallas_iglesia.dart';
 import '../../features/tribunal/pantalla_tribunal.dart';
 import '../../features/tribunal/presidente/pantalla_escrutinio.dart';
@@ -32,6 +33,9 @@ abstract final class Rutas {
   static const String proceso = '/tribunal/proceso';
   static const String avanceMesas = '/tribunal/proceso/mesas';
   static const String resultados = '/tribunal/proceso/resultados';
+
+  /// Datos de la persona de un miembro de la iglesia (IglesiaAdmin).
+  static String editarMiembro(int miembroId) => '$miembrosIglesia/$miembroId';
 
   /// Detalle de una mesa del proceso (Administrador, Tribunal).
   static String detalleMesa(int mesaId) => '/tribunal/proceso/mesas/$mesaId';
@@ -122,6 +126,16 @@ GoRouter crearRouter(SesionController sesion) {
                   soloPendientes:
                       estado.uri.queryParameters['pendientes'] == '1',
                 ),
+                routes: [
+                  // Misma guarda de la sección Iglesia (prefijo /tribunal/iglesia).
+                  GoRoute(
+                    path: ':miembroId',
+                    builder: (context, estado) => PantallaEditarMiembro(
+                      miembroId:
+                          int.tryParse(estado.pathParameters['miembroId'] ?? '') ?? 0,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

@@ -1,0 +1,4 @@
+{
+    "AMBIENTE":  "PRODUCCION",
+    "API_BASE_URL":  "https://tribunal.conpociiech.org/api/v1"
+}

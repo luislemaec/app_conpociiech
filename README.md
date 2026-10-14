@@ -44,11 +44,11 @@ flowchart LR
 
 ```
 lib/
-  main.dart                     Arranque: entorno (--dart-define), Firebase opcional y App
+  main.dart                     Arranque: entorno (config/*.json), Firebase opcional y App
   app.dart                      Raíz: proveedores, router, ciclo de vida y avisos push
   core/                         Infraestructura sin pantallas
     api/cliente_api.dart        Cliente HTTP de TEC: JSON, archivos, errores, tiempos de espera
-    config/entorno.dart         API_BASE_URL (solo HTTPS)
+    config/entorno.dart         AMBIENTE y API_BASE_URL (solo HTTPS): única configuración
     router/app_router.dart      Rutas (go_router) y guardas por sesión, cambio de clave y rol
     sesion/
       api_autenticacion.dart    Endpoints /auth/* y modelos de sesión y perfil
@@ -80,7 +80,7 @@ lib/
       pantalla_tribunal.dart    Panel: secciones según los roles del usuario
       presidente/               Mi mesa, padrón y escrutinio (Presidente de mesa)
         guia_escrutinio.dart     Guía del flujo y aviso de cambios pendientes de guardar
-      iglesia/                  Mi iglesia, miembros y habilitación (IglesiaAdmin)
+      iglesia/                  Mi iglesia, miembros, habilitación y datos de la persona (IglesiaAdmin)
       proceso/                  Resumen, alertas, avance, detalle de mesa, revisión de actas
                                 y resultados (Tribunal y Administrador)
 test/
@@ -203,8 +203,17 @@ Superadministrador) pueden iniciar sesión pero no ven el módulo, y TEC los rec
   pendientes de revisión, también en otra iglesia).
 - Indicador **Habilitados / Total**, conservando la terminología funcional de TEC.
 - Miembros por páginas, con búsqueda y filtros de habilitación y **pendientes de revisión**.
-- **Habilitación para participar:** interruptor con confirmación, solo en la fase del
-  cronograma que lo permite; el cambio marca al miembro como revisado, igual que la web.
+- **Miembros es solo de consulta:** nombre, sexo (ícono + texto), estado del padrón
+  (Habilitado = éxito, No habilitado = neutro) y «Pendiente de revisión» (advertencia), con
+  la misma semántica que Personas en TEC WEB. Sin interruptores ni edición en línea: el lápiz
+  es la única entrada a la modificación y al volver se actualiza solo esa fila.
+- **Datos de la persona** (lápiz): «Apellidos y nombres», cédula, sexo y **Habilitar para
+  padrón**, como el diálogo de Personas de la web. Consulta el detalle actualizado; la App
+  valida formato y TEC dígito verificador, cédula duplicada, alcance, iglesia activa y
+  cronograma. Al guardar, TEC usa el servicio de cada cambio: datos de la persona (con o sin
+  habilitación) → `guardarDesdeDTO` en una transacción; solo habilitación →
+  `cambiarHabilitacion` (no se audita Persona); sin cambios no se envía nada. Guardar marca al
+  miembro como revisado. Fuera de la fase de edición se muestra en modo consulta.
 
 ### Tribunal y Administrador — «Proceso electoral»
 - Alertas del proceso (las del dashboard web) y resumen: fase, iglesias, recintos, mesas,
@@ -278,8 +287,27 @@ flutter test
 flutter run
 ```
 
-`API_BASE_URL` es opcional (por defecto producción) y **debe ser https**: la App no
-arranca con una URL insegura.
+#### Ambientes (desarrollo / producción)
+
+Una sola configuración, `Entorno` (`lib/core/config/entorno.dart`): `AMBIENTE` y
+`API_BASE_URL`, que recibe `ClienteApi` y usan todos los servicios. Se entrega al compilar
+con `--dart-define-from-file`; no hay URLs en otros archivos ni secretos en la App.
+
+| Archivo | Uso | En git |
+|---|---|---|
+| `config/produccion.json` | `AMBIENTE=PRODUCCION`, URL pública | Sí |
+| `config/desarrollo.json` | `AMBIENTE=DESARROLLO`, IP de la PC y CA de mkcert | No (`.gitignore`); plantilla en `config/desarrollo.ejemplo.json` |
+
+```bash
+flutter build appbundle --release --dart-define-from-file=config/produccion.json
+flutter run --dart-define-from-file=config/desarrollo.json
+```
+
+Sin archivo se usa producción (valor seguro para un APK publicado). La URL **debe ser
+https**: la App no arranca con una URL insegura. En compilaciones debug, la pantalla de
+inicio de sesión muestra «Ambiente: Desarrollo · <IP>» o «Producción · <host>»; en un APK
+release de producción no se muestra. Por qué no `.env`: `flutter_dotenv` copia el archivo
+dentro del APK como un recurso más y no aporta nada sobre `--dart-define`.
 
 #### Probar contra TEC local (nginx + mkcert en la PC)
 
@@ -290,29 +318,23 @@ y `dart:io` en Android no confía en CA instaladas por el usuario. Por eso:
    (`mkcert ... tribunal.local localhost 127.0.0.1 <IP-de-la-PC>`) y nginx escuchar en
    `listen 443 ssl;` (todas las interfaces). Para el celular, permitir el 443 en el
    firewall de Windows (red privada). El emulador también llega a esa IP.
-2. **CA de desarrollo:** crear `entorno_local.json` (está en `.gitignore`, no se sube):
-
-   ```json
-   {
-     "API_BASE_URL": "https://<IP-de-la-PC>/api/v1",
-     "CA_DESARROLLO": "-----BEGIN CERTIFICATE-----\n...contenido de rootCA.pem...\n-----END CERTIFICATE-----"
-   }
-   ```
-
-   `rootCA.pem` está en la carpeta que indica `mkcert -CAROOT`. **Nunca** copiar
-   `rootCA-key.pem`.
-3. Ejecutar:
+2. **CA de desarrollo:** copiar `config/desarrollo.ejemplo.json` a `config/desarrollo.json`
+   y poner en `CA_DESARROLLO` el cuerpo de `rootCA.pem` **en una sola línea base64, sin
+   encabezados ni espacios** (en Windows, los saltos de línea de un PEM dentro de un
+   `--dart-define` rompen la llamada al compilador; la App rearma el PEM). `rootCA.pem`
+   está en la carpeta que indica `mkcert -CAROOT`. **Nunca** copiar `rootCA-key.pem`.
+3. Ejecutar (debug o profile):
 
    ```bash
-   flutter run --dart-define-from-file=entorno_local.json
+   flutter run --dart-define-from-file=config/desarrollo.json
    ```
 
-`CA_DESARROLLO` solo se usa en debug/profile: en **release se ignora**, así el APK
+`CA_DESARROLLO` solo se usa con `AMBIENTE=DESARROLLO` y fuera de release: el APK
 publicado nunca confía en una CA local (`Entorno`, `crearClienteHttp`). Comprobar antes
 desde la PC: `curl --ssl-no-revoke https://<IP-de-la-PC>/api/v1/auth/yo` debe responder
 **401** (`--ssl-no-revoke` evita el aviso de revocación de schannel con certificados mkcert).
-
-El dispositivo o emulador debe resolver `tribunal.local` y confiar en su certificado.
+En el celular, Chrome mostrará un aviso de certificado (no conoce la CA de mkcert): es
+normal y no afecta a la App.
 
 **Pruebas:** corren contra `test/tec_simulado.dart`, que reproduce los endpoints y reglas
 del contrato (roles, rotación del refresh, sesión restringida, transiciones del escrutinio,
@@ -355,6 +377,17 @@ el build falla a propósito). Pasos completos en [docs/release-android.md](docs/
 - **Componentes reutilizables:** encabezado, estructura adaptativa y estados de carga,
   error con reintento y vacío; las consultas electorales reutilizan `VistaConsulta`,
   `Seccion`, `Dato`, `Indicadores` y `EtiquetaEstado`.
+- **Colores semánticos** (`colores_semanticos.dart`, `ThemeExtension`): éxito, información,
+  advertencia, peligro y neutro, derivados de `ColoresTribunal` y usados por significado
+  (`context.semanticos`). Componentes en `shared/widgets/etiquetas.dart`:
+  `EtiquetaSemantica`, `EtiquetaPadron`, `EtiquetaPendienteRevision`, `AvisoSemantico` y
+  `DatoSexo`. `EtiquetaEstado` usa la severidad del dashboard web (CERRADO éxito,
+  OBSERVADO/ANULADO peligro, PENDIENTE neutro, en curso advertencia).
+- **Escala tipográfica** (en `TemaApp`): título principal 24/700, sección 20/700, tarjeta
+  16/500, cuerpo 16 y 15, secundario y etiquetas 13 (mínimo para texto operativo), botones
+  15/500. Sin tamaños sueltos en las pantallas; respeta el escalado de texto del sistema.
+- **Diseño plano:** sin degradados ni sombras decorativas; contenido de solo lectura en
+  filas con separadores, sin tarjetas anidadas.
 - **Pantallas actualizadas:** Login, Inicio, Tribunal, Mi Iglesia, Miembros, Mi Mesa,
   Padrón, Escrutinio, Proceso, Avance de mesas, Detalle/revisión de actas y Resultados.
   Los filtros de miembros se distribuyen en varias líneas y la guía del escrutinio

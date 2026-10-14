@@ -41,6 +41,20 @@ Future<void> esperar(WidgetTester tester) async {
   }
 }
 
+/// Desplaza la lista de miembros hasta el lápiz del miembro y lo toca.
+Future<void> tocarLapiz(WidgetTester tester, String nombre) async {
+  final lapiz = find.byTooltip('Editar datos de $nombre');
+  await tester.scrollUntilVisible(
+    lapiz,
+    200,
+    scrollable: find.descendant(of: find.byType(ListView), matching: find.byType(Scrollable)).first,
+  );
+  await tester.pumpAndSettle();
+  await tester.tap(lapiz);
+  await tester.pumpAndSettle();
+  await esperar(tester);
+}
+
 void main() {
   setUp(() {
     tec = TecSimulado()
@@ -226,17 +240,25 @@ void main() {
       (tester) async {
         await montar(tester, 'iglesia');
         await ir(tester, '${Rutas.miembrosIglesia}?pendientes=1');
-        await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 01'));
+        await tocarLapiz(tester, 'Miembro 01');
+        await tester.ensureVisible(find.widgetWithText(SwitchListTile, 'Habilitar para padrón'));
         await tester.pumpAndSettle();
-        await tester.tap(
-          find.widgetWithText(FilledButton, 'Quitar habilitación'),
-        );
+        await tester.tap(find.widgetWithText(SwitchListTile, 'Habilitar para padrón'));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.widgetWithText(FilledButton, 'Guardar cambios'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, 'Guardar cambios'));
         await esperar(tester);
         expect(tec.miembros[0]['revisado'], isTrue);
+        expect(tec.miembros[0]['habilitado'], isFalse);
+        // La fila se actualizó en su lugar: ya no está pendiente.
+        expect(find.byTooltip('Editar datos de Miembro 01'), findsOneWidget);
         expect(
-          find.text('No habilitado'),
-          findsOneWidget,
-          reason: 'la fila ya no dice «Pendiente de revisión»',
+          find.descendant(
+            of: find.ancestor(of: find.text('Miembro 01'), matching: find.byType(Row)).first,
+            matching: find.text('Pendiente de revisión'),
+          ),
+          findsNothing,
         );
       },
     );
@@ -253,80 +275,211 @@ void main() {
     });
   });
 
-  group('Habilitación de miembros', () {
-    testWidgets('pide confirmación, guarda en TEC y actualiza la fila', (
-      tester,
-    ) async {
+  group('Miembros: solo consulta', () {
+    testWidgets('no tiene controles editables; el lápiz es la única acción', (tester) async {
       await montar(tester, 'iglesia');
       await ir(tester, Rutas.miembrosIglesia);
-      // Miembro 02 está no habilitado (los pares lo están en falso).
-      final fila = find.widgetWithText(SwitchListTile, 'Miembro 02');
-      expect(tester.widget<SwitchListTile>(fila).value, isFalse);
-
-      await tester.tap(fila);
-      await tester.pumpAndSettle();
-      expect(
-        find.text('¿Habilitar a Miembro 02 para participar en las elecciones?'),
-        findsOneWidget,
-      );
-      await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
-      await esperar(tester);
-
-      expect(tester.widget<SwitchListTile>(fila).value, isTrue);
-      expect(
-        find.text('Miembro 02 quedó habilitado para participar.'),
-        findsOneWidget,
-      );
-      expect(tec.miembros[1]['habilitado'], isTrue);
-      expect(tec.miembros[1]['revisado'], isTrue);
-    });
-
-    testWidgets('cancelar no envía nada a TEC', (tester) async {
-      await montar(tester, 'iglesia');
-      await ir(tester, Rutas.miembrosIglesia);
-      final fila = find.widgetWithText(SwitchListTile, 'Miembro 01');
-      await tester.tap(fila);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Cancelar'));
-      await esperar(tester);
-      expect(tester.widget<SwitchListTile>(fila).value, isTrue);
-      expect(
-        tec.consultas.where((u) => u.path.endsWith('/habilitacion')),
-        isEmpty,
-      );
-    });
-
-    testWidgets('con el cronograma cerrado no se ofrece editar', (
-      tester,
-    ) async {
-      tec.edicionAbierta = false;
-      await montar(tester, 'iglesia');
-      await ir(tester, Rutas.miembrosIglesia);
+      expect(find.byType(Switch), findsNothing);
       expect(find.byType(SwitchListTile), findsNothing);
-      expect(find.textContaining('fase del cronograma'), findsOneWidget);
+      expect(find.byType(Checkbox), findsNothing);
+      expect(find.byTooltip('Editar datos de Miembro 01'), findsOneWidget);
+      // Tocar la fila no abre ni cambia nada.
+      await tester.tap(find.text('Miembro 01'));
+      await esperar(tester);
+      expect(find.text('Datos de la persona'), findsNothing);
+      expect(tec.cuerpos, isEmpty);
     });
 
-    testWidgets(
-      'si el cronograma se cierra mientras edita, informa y bloquea',
-      (tester) async {
-        await montar(tester, 'iglesia');
-        await ir(tester, Rutas.miembrosIglesia);
-        tec.edicionAbierta = false;
-        await tester.tap(find.widgetWithText(SwitchListTile, 'Miembro 02'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.widgetWithText(FilledButton, 'Habilitar'));
-        await esperar(tester);
-        expect(find.textContaining('cerrada por el cronograma'), findsWidgets);
-        expect(find.byType(SwitchListTile), findsNothing);
-        expect(tec.miembros[1]['habilitado'], isFalse);
-      },
-    );
+    testWidgets('muestra sexo, estado del padrón y revisión pendiente con texto', (tester) async {
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      // Miembro 01: M, habilitado, pendiente. Miembro 02: F, no habilitado.
+      // Miembro 05: sin dato de sexo.
+      Finder enFila(String nombre, String texto) => find.descendant(
+        of: find.ancestor(of: find.text(nombre), matching: find.byType(Row)).first,
+        matching: find.text(texto),
+      );
+      expect(enFila('Miembro 01', 'Masculino'), findsOneWidget);
+      expect(enFila('Miembro 01', 'Habilitado'), findsOneWidget);
+      expect(enFila('Miembro 01', 'Pendiente de revisión'), findsOneWidget);
+      expect(enFila('Miembro 02', 'Femenino'), findsOneWidget);
+      expect(enFila('Miembro 02', 'No habilitado'), findsOneWidget);
+      expect(enFila('Miembro 03', 'Pendiente de revisión'), findsNothing, reason: 'revisado');
+      await tester.scrollUntilVisible(find.text('Miembro 05'), 200, scrollable: find.byType(Scrollable).last);
+      expect(enFila('Miembro 05', 'Sin dato'), findsOneWidget);
+    });
 
     test('solo el IglesiaAdmin puede cambiar la habilitación', () async {
       final sesion = tec.crearSesion();
       await sesion.iniciarSesion('tribunal', 'Clave123');
       await expectLater(
         ApiTribunal(tec.api, sesion).cambiarHabilitacion(2, true),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
+    });
+  });
+
+  group('Editar datos de la persona', () {
+    Future<void> abrirEdicion(WidgetTester tester, String nombre) async {
+      // Pantalla alta: el formulario completo (hasta «Guardar») queda construido.
+      tester.view.physicalSize = const Size(800, 1600);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+      await tocarLapiz(tester, nombre);
+    }
+
+    Finder habilitar() => find.widgetWithText(SwitchListTile, 'Habilitar para padrón');
+
+    Finder campo(String etiqueta) => find.widgetWithText(TextFormField, etiqueta);
+    Finder guardar() => find.widgetWithText(FilledButton, 'Guardar cambios');
+
+    /// Lleva el botón a la vista, redibuja y toca (el toque se calcula sobre la vista final).
+    Future<void> tocarGuardar(WidgetTester tester) async {
+      await tester.ensureVisible(guardar());
+      await tester.pumpAndSettle();
+      await tester.tap(guardar());
+      await esperar(tester);
+    }
+
+    testWidgets('consulta el detalle actualizado a TEC', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      expect(tec.consultas.any((u) => u.path.endsWith('/tribunal/iglesia/miembros/4')), isTrue);
+      expect(find.text('Miembro 04'), findsWidgets);
+      expect(find.text('1710034065'), findsOneWidget);
+      // Sin cambios no se puede guardar ni se envía nada.
+      expect(tester.widget<FilledButton>(guardar()).onPressed, isNull);
+      expect(tec.actualizacionesPersona, 0);
+    });
+
+    testWidgets('guarda solo los campos permitidos y actualiza la fila', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04'); // F, no habilitado
+      final consultasLista = tec.consultas.where((u) => u.path.endsWith('/miembros')).length;
+      await tester.enterText(campo('Apellidos y nombres'), 'PEREZ LOPEZ JUAN');
+      await tester.tap(find.text('Masculino'));
+      await tester.pumpAndSettle();
+      await tocarGuardar(tester);
+
+      expect(tec.actualizacionesPersona, 1);
+      final cuerpo = tec.cuerpos.last;
+      // Sin cambio de habilitación no se envía «habilitado».
+      expect(cuerpo.keys.toSet(), {'nombres', 'documento', 'sexo'});
+      expect(cuerpo['nombres'], 'PEREZ LOPEZ JUAN');
+      expect(cuerpo['sexo'], 'M');
+      // Volvió a la lista con solo esa fila actualizada (sin volver a consultar la lista).
+      expect(find.byTooltip('Editar datos de PEREZ LOPEZ JUAN'), findsOneWidget);
+      expect(tec.consultas.where((u) => u.path.endsWith('/miembros')).length, consultasLista);
+      expect(find.text('Datos de la persona actualizados.'), findsOneWidget);
+    });
+
+    testWidgets('solo la habilitación: TEC no toca los datos de la persona', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04'); // no habilitado
+      expect(tester.widget<SwitchListTile>(habilitar()).value, isFalse);
+      await tester.tap(habilitar());
+      await tester.pumpAndSettle();
+      await tocarGuardar(tester);
+      expect(tec.cuerpos.last['habilitado'], isTrue);
+      expect(tec.soloHabilitaciones, 1);
+      expect(tec.actualizacionesPersona, 0, reason: 'Persona no se actualiza artificialmente');
+      expect(tec.miembros[3]['habilitado'], isTrue);
+      final fila = find.ancestor(of: find.text('Miembro 04'), matching: find.byType(Row)).first;
+      expect(find.descendant(of: fila, matching: find.text('Habilitado')), findsOneWidget);
+    });
+
+    testWidgets('datos y habilitación se guardan en una sola acción', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      await tester.enterText(campo('Apellidos y nombres'), 'PEREZ LOPEZ JUAN');
+      await tester.ensureVisible(habilitar());
+      await tester.pumpAndSettle();
+      await tester.tap(habilitar());
+      await tester.pumpAndSettle();
+      await tocarGuardar(tester);
+      expect(tec.cuerpos.where((c) => c.containsKey('nombres')), hasLength(1), reason: 'una sola petición');
+      expect(tec.actualizacionesPersona, 1);
+      expect(tec.miembros[3]['habilitado'], isTrue);
+    });
+
+    testWidgets('muestra el sexo con ícono y texto', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      for (final (texto, icono) in const [
+        ('Masculino', Icons.male),
+        ('Femenino', Icons.female),
+        ('Sin dato', Icons.person_outline),
+      ]) {
+        final segmento = find.ancestor(of: find.text(texto), matching: find.byType(InkWell)).first;
+        expect(find.descendant(of: segmento, matching: find.byIcon(icono)), findsOneWidget);
+      }
+    });
+
+    testWidgets('valida los campos antes de enviar', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      await tester.enterText(campo('Apellidos y nombres'), '   ');
+      await tester.enterText(campo('Cédula'), '12345');
+      await tocarGuardar(tester);
+      expect(find.text('Ingrese los apellidos y nombres.'), findsOneWidget);
+      expect(find.text('La cédula debe tener 10 dígitos.'), findsOneWidget);
+      expect(tec.actualizacionesPersona, 0);
+    });
+
+    testWidgets('muestra las reglas de TEC: dígito verificador y cédula duplicada', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      await tester.enterText(campo('Cédula'), TecSimulado.cedulaInvalida);
+      await tocarGuardar(tester);
+      expect(find.text('La cédula ingresada no es válida.'), findsOneWidget);
+
+      await tester.enterText(campo('Cédula'), TecSimulado.cedulaDeOtraPersona);
+      await tocarGuardar(tester);
+      expect(find.text('La cédula ingresada ya pertenece a otra persona.'), findsOneWidget);
+      expect(tec.actualizacionesPersona, 0);
+    });
+
+    testWidgets('sin conexión al guardar informa y conserva lo escrito', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      await tester.enterText(campo('Apellidos y nombres'), 'PEREZ LOPEZ JUAN');
+      tec.sinConexion = true;
+      await tocarGuardar(tester);
+      expect(find.textContaining('No se pudo conectar'), findsOneWidget);
+      expect(find.text('PEREZ LOPEZ JUAN'), findsOneWidget);
+      expect(tec.actualizacionesPersona, 0);
+    });
+
+    testWidgets('con el cronograma cerrado se consulta pero no se edita', (tester) async {
+      tec.edicionAbierta = false;
+      await abrirEdicion(tester, 'Miembro 04');
+      expect(find.textContaining('fase del cronograma que permite editar'), findsOneWidget);
+      expect(tester.widget<TextFormField>(campo('Apellidos y nombres')).enabled, isFalse);
+      expect(tester.widget<SwitchListTile>(habilitar()).onChanged, isNull);
+      expect(tester.widget<FilledButton>(guardar()).onPressed, isNull);
+    });
+
+    testWidgets('si el cronograma se cierra antes de guardar, informa el mensaje de TEC', (tester) async {
+      await abrirEdicion(tester, 'Miembro 04');
+      tec.edicionAbierta = false;
+      await tester.tap(habilitar());
+      await tester.pumpAndSettle();
+      await tocarGuardar(tester);
+      expect(find.textContaining('cerrada por el cronograma'), findsOneWidget);
+      expect(tec.miembros[3]['habilitado'], isFalse);
+    });
+
+    test('un miembro de otra iglesia se rechaza aunque se conozca su id', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('iglesia', 'Clave123');
+      final api = ApiTribunal(tec.api, sesion);
+      await expectLater(api.detalleMiembro(TecSimulado.miembroDeOtraIglesia), throwsA(errorApi('SIN_PERMISO')));
+      await expectLater(
+        api.actualizarPersona(TecSimulado.miembroDeOtraIglesia, nombres: 'X', documento: '1710034065'),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
+    });
+
+    test('un usuario sin rol IglesiaAdmin no puede editar', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('tribunal', 'Clave123');
+      await expectLater(
+        ApiTribunal(tec.api, sesion).actualizarPersona(4, nombres: 'X', documento: '1710034065'),
         throwsA(errorApi('SIN_PERMISO')),
       );
     });

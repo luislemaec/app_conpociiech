@@ -1,0 +1,5 @@
+{
+    "AMBIENTE":  "DESARROLLO",
+    "API_BASE_URL":  "https://\u003cIP-de-la-PC\u003e/api/v1",
+    "CA_DESARROLLO":  "\u003crootCA.pem de mkcert en una sola linea base64, sin encabezados\u003e"
+}

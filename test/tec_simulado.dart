@@ -54,6 +54,9 @@ class TecSimulado {
   /// Consultas recibidas con sus parámetros (p. ej. paginación de miembros).
   final List<Uri> consultas = [];
 
+  /// Cuerpos JSON recibidos por el módulo Tribunal (para comprobar qué campos se envían).
+  final List<Map<String, dynamic>> cuerpos = [];
+
   SesionController crearSesion({
     AlmacenTokens? almacen,
     DateTime Function()? reloj,
@@ -142,6 +145,7 @@ class TecSimulado {
       return http.Response('', 204);
     }
     consultas.add(peticion.url);
+    if (esJson) cuerpos.add(cuerpo);
     return _tribunal(
       ruta,
       usuarios[nombre]!.roles,
@@ -161,6 +165,8 @@ class TecSimulado {
         'nombre': 'Miembro ${i.toString().padLeft(2, '0')}',
         'habilitado': i.isOdd,
         'revisado': i % 3 == 0,
+        // Valor almacenado: M, F o sin dato.
+        'sexo': i % 5 == 0 ? null : (i.isEven ? 'F' : 'M'),
       },
   ];
 
@@ -169,6 +175,24 @@ class TecSimulado {
 
   /// El cronograma simulado permite cambiar la habilitación de los miembros.
   bool edicionAbierta = true;
+
+  /// Datos de la persona por id de miembro (se crean al consultarlos).
+  final Map<int, Map<String, dynamic>> personas = {};
+
+  /// Guardados de datos de persona que llegaron a TEC (sin cambios no debe haber).
+  int actualizacionesPersona = 0;
+
+  /// Cambios de solo habilitación (TEC usa cambiarHabilitacion, sin tocar Persona).
+  int soloHabilitaciones = 0;
+
+  /// Id de un miembro de otra iglesia: TEC responde 403 aunque la App conozca el id.
+  static const int miembroDeOtraIglesia = 999;
+
+  /// Cédula con formato válido pero dígito verificador incorrecto (lo valida TEC).
+  static const String cedulaInvalida = '1710034066';
+
+  /// Cédula válida que ya pertenece a otra persona.
+  static const String cedulaDeOtraPersona = '1710034057';
 
   // Escrutinio simulado (mismas transiciones que EscrutinioService).
   String estadoActa = 'PENDIENTE';
@@ -479,6 +503,76 @@ class TecSimulado {
         'revisado': true,
       };
       return _json(200, miembros[i]);
+    }
+
+    // Edición de la persona (GestionMovilService.actualizarPersonaMiembro).
+    final persona = RegExp(
+      r'^/tribunal/iglesia/miembros/(\d+)(/persona)?$',
+    ).firstMatch(ruta);
+    if (persona != null) {
+      final id = int.parse(persona.group(1)!);
+      if (id == miembroDeOtraIglesia) {
+        return _error(403, 'SIN_PERMISO', 'No puede gestionar miembros de otra iglesia.');
+      }
+      final i = miembros.indexWhere((m) => m['id'] == id);
+      if (i < 0) {
+        return _error(404, 'MIEMBRO_NO_DISPONIBLE', 'El miembro no existe o ya no está activo en la iglesia.');
+      }
+      final datos = personas.putIfAbsent(
+        id,
+        () => {'nombres': miembros[i]['nombre'], 'documento': '1710034065', 'sexo': miembros[i]['sexo']},
+      );
+      Map<String, dynamic> detalle() => {
+        'id': id,
+        'nombre': datos['nombres'],
+        ...datos,
+        'habilitado': miembros[i]['habilitado'],
+        'revisado': miembros[i]['revisado'],
+        'permiteEdicion': edicionAbierta,
+      };
+      if (persona.group(2) == null && metodo == 'GET') return _json(200, detalle());
+      if (persona.group(2) != null && metodo == 'PUT') {
+        if (!edicionAbierta) {
+          return _error(409, 'EDICION_CERRADA', 'La actualización del padrón está cerrada por el cronograma electoral.');
+        }
+        final nombres = (cuerpo['nombres'] as String? ?? '').trim();
+        final documento = (cuerpo['documento'] as String? ?? '').trim();
+        if (nombres.isEmpty) {
+          return _error(400, 'DATOS_INVALIDOS', 'Los nombres de la persona son obligatorios.');
+        }
+        if (!RegExp(r'^\d{10}$').hasMatch(documento) || documento == cedulaInvalida) {
+          return _error(400, 'DATOS_INVALIDOS', 'La cédula ingresada no es válida.');
+        }
+        if (documento == cedulaDeOtraPersona) {
+          return _error(409, 'DOCUMENTO_DUPLICADO', 'La cédula ingresada ya pertenece a otra persona.');
+        }
+        // Igual que GestionMovilService: datos de la persona (con o sin habilitación) →
+        // guardarDesdeDTO; solo habilitación → cambiarHabilitacion; nada → sin guardar.
+        final cambiaPersona = nombres != datos['nombres'] ||
+            documento != datos['documento'] ||
+            cuerpo['sexo'] != datos['sexo'];
+        final habilitado = cuerpo['habilitado'] as bool?;
+        final cambiaHabilitacion = habilitado != null && habilitado != miembros[i]['habilitado'];
+        if (cambiaPersona) {
+          actualizacionesPersona++;
+          datos
+            ..['nombres'] = nombres
+            ..['documento'] = documento
+            ..['sexo'] = cuerpo['sexo'];
+        } else if (cambiaHabilitacion) {
+          soloHabilitaciones++;
+        }
+        if (cambiaPersona || cambiaHabilitacion) {
+          miembros[i] = {
+            ...miembros[i],
+            'nombre': datos['nombres'],
+            'sexo': datos['sexo'],
+            if (cambiaHabilitacion) 'habilitado': habilitado,
+            'revisado': true,
+          };
+        }
+        return _json(200, detalle());
+      }
     }
 
     const ubicacion = {

@@ -62,22 +62,20 @@ class PantallaOrganizacion extends StatelessWidget {
                 const Text(ContenidoInstitucional.introInstituciones),
                 for (final area in ContenidoInstitucional.areas) ...[
                   const SizedBox(height: DisenoApp.md),
-                  Text(
-                    area.nombre,
-                    style: tema.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                  Semantics(
+                    header: true,
+                    child: Text(area.nombre, style: tema.textTheme.titleSmall),
                   ),
-                  const SizedBox(height: DisenoApp.sm),
-                  for (final institucion in area.instituciones) ...[
-                    TarjetaServicio(
+                  // Filas separadas, sin tarjetas dentro de la tarjeta de sección.
+                  for (var i = 0; i < area.instituciones.length; i++) ...[
+                    if (i > 0) const Divider(),
+                    FilaInformativa(
                       icono: area.nombre == 'Educación'
                           ? Icons.school_outlined
                           : Icons.volunteer_activism_outlined,
-                      titulo: institucion.nombre,
-                      descripcion: institucion.descripcion,
+                      titulo: area.instituciones[i].nombre,
+                      descripcion: area.instituciones[i].descripcion,
                     ),
-                    const SizedBox(height: DisenoApp.sm),
                   ],
                 ],
               ],
@@ -89,7 +87,7 @@ class PantallaOrganizacion extends StatelessWidget {
               icono: Icons.apartment_outlined,
               titulo: 'Departamentos',
               children: [
-                TarjetaServicio(
+                FilaInformativa(
                   icono: Icons.how_to_vote_outlined,
                   titulo: 'Tribunal Electoral',
                   descripcion: ContenidoInstitucional.tribunalElectoral,
