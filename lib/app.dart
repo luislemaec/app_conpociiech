@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import 'core/api/cliente_api.dart';
+import 'core/api/cliente_http.dart';
 import 'core/config/entorno.dart';
 import 'core/push/controlador_push.dart';
 import 'core/push/proveedor_push.dart';
@@ -40,8 +41,14 @@ class AppConpociiech extends StatefulWidget {
 }
 
 class _AppConpociiechState extends State<AppConpociiech> {
-  late final ClienteApi _cliente = widget.cliente ?? ClienteApi(widget.entorno.apiBaseUrl);
-  late final SesionController _sesion = widget.sesion ??
+  late final ClienteApi _cliente =
+      widget.cliente ??
+      ClienteApi(
+        widget.entorno.apiBaseUrl,
+        cliente: crearClienteHttp(caDesarrollo: widget.entorno.caDesarrollo),
+      );
+  late final SesionController _sesion =
+      widget.sesion ??
       (SesionController(
         api: ApiAutenticacion(_cliente),
         almacen: AlmacenTokensSeguro(),
@@ -59,7 +66,11 @@ class _AppConpociiechState extends State<AppConpociiech> {
     super.initState();
     // Al volver a la App se comprueba la inactividad (15 minutos, como la web).
     _ciclo = AppLifecycleListener(onResume: () => _sesion.registrarActividad());
-    _push = ControladorPush(proveedor: widget.proveedorPush, sesion: _sesion, cliente: _cliente);
+    _push = ControladorPush(
+      proveedor: widget.proveedorPush,
+      sesion: _sesion,
+      cliente: _cliente,
+    );
     _avisos
       ..add(_push.avisoRecibido.listen(_mostrarAviso))
       ..add(_push.avisoAbierto.listen((aviso) => _abrir(aviso.ruta)));
@@ -71,11 +82,18 @@ class _AppConpociiechState extends State<AppConpociiech> {
     if (texto.isEmpty) return;
     _mensajes.currentState
       ?..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(
-        content: Text(texto),
-        duration: const Duration(seconds: 6),
-        action: aviso.ruta == null ? null : SnackBarAction(label: 'Ver', onPressed: () => _abrir(aviso.ruta)),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(texto),
+          duration: const Duration(seconds: 6),
+          action: aviso.ruta == null
+              ? null
+              : SnackBarAction(
+                  label: 'Ver',
+                  onPressed: () => _abrir(aviso.ruta),
+                ),
+        ),
+      );
   }
 
   /// Solo rutas internas conocidas; la guarda exige sesión y rol como en cualquier navegación.

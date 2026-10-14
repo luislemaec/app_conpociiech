@@ -12,10 +12,12 @@ abstract class AlmacenTokens {
 
 class AlmacenTokensSeguro implements AlmacenTokens {
   AlmacenTokensSeguro()
-      : _almacen = const FlutterSecureStorage(
-          // Sin copia en iCloud ni en otro dispositivo.
-          iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
-        );
+    : _almacen = const FlutterSecureStorage(
+        // Sin copia en iCloud ni en otro dispositivo.
+        iOptions: IOSOptions(
+          accessibility: KeychainAccessibility.first_unlock_this_device,
+        ),
+      );
 
   static const String _clave = 'tec.refresh_token';
 
@@ -25,7 +27,8 @@ class AlmacenTokensSeguro implements AlmacenTokens {
   Future<String?> leerRefresh() => _almacen.read(key: _clave);
 
   @override
-  Future<void> guardarRefresh(String refreshToken) => _almacen.write(key: _clave, value: refreshToken);
+  Future<void> guardarRefresh(String refreshToken) =>
+      _almacen.write(key: _clave, value: refreshToken);
 
   @override
   Future<void> borrar() => _almacen.delete(key: _clave);
@@ -39,7 +42,8 @@ class AlmacenTokensMemoria implements AlmacenTokens {
   Future<String?> leerRefresh() async => refresh;
 
   @override
-  Future<void> guardarRefresh(String refreshToken) async => refresh = refreshToken;
+  Future<void> guardarRefresh(String refreshToken) async =>
+      refresh = refreshToken;
 
   @override
   Future<void> borrar() async => refresh = null;

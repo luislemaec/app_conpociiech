@@ -279,11 +279,38 @@ flutter run
 ```
 
 `API_BASE_URL` es opcional (por defecto producción) y **debe ser https**: la App no
-arranca con una URL insegura. Contra el entorno local:
+arranca con una URL insegura.
 
-```bash
-flutter run --dart-define=API_BASE_URL=https://tribunal.local/api/v1
-```
+#### Probar contra TEC local (nginx + mkcert en la PC)
+
+El emulador y el celular no resuelven `tribunal.local` (está solo en el `hosts` de la PC)
+y `dart:io` en Android no confía en CA instaladas por el usuario. Por eso:
+
+1. **Por IP:** el certificado de nginx (mkcert) debe incluir la IP de la PC en la red
+   (`mkcert ... tribunal.local localhost 127.0.0.1 <IP-de-la-PC>`) y nginx escuchar en
+   `listen 443 ssl;` (todas las interfaces). Para el celular, permitir el 443 en el
+   firewall de Windows (red privada). El emulador también llega a esa IP.
+2. **CA de desarrollo:** crear `entorno_local.json` (está en `.gitignore`, no se sube):
+
+   ```json
+   {
+     "API_BASE_URL": "https://<IP-de-la-PC>/api/v1",
+     "CA_DESARROLLO": "-----BEGIN CERTIFICATE-----\n...contenido de rootCA.pem...\n-----END CERTIFICATE-----"
+   }
+   ```
+
+   `rootCA.pem` está en la carpeta que indica `mkcert -CAROOT`. **Nunca** copiar
+   `rootCA-key.pem`.
+3. Ejecutar:
+
+   ```bash
+   flutter run --dart-define-from-file=entorno_local.json
+   ```
+
+`CA_DESARROLLO` solo se usa en debug/profile: en **release se ignora**, así el APK
+publicado nunca confía en una CA local (`Entorno`, `crearClienteHttp`). Comprobar antes
+desde la PC: `curl --ssl-no-revoke https://<IP-de-la-PC>/api/v1/auth/yo` debe responder
+**401** (`--ssl-no-revoke` evita el aviso de revocación de schannel con certificados mkcert).
 
 El dispositivo o emulador debe resolver `tribunal.local` y confiar en su certificado.
 

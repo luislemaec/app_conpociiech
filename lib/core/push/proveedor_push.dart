@@ -49,7 +49,8 @@ class ProveedorPushInactivo implements ProveedorPush {
   Stream<AvisoPush> get avisoAbierto => const Stream.empty();
 
   @override
-  String get plataforma => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  String get plataforma =>
+      defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
 }
 
 /// Opciones de Firebase recibidas al compilar con `--dart-define` (no son secretas, pero no
@@ -62,8 +63,14 @@ class ConfiguracionFirebase {
     const remitente = String.fromEnvironment('FIREBASE_SENDER_ID');
     const appAndroid = String.fromEnvironment('FIREBASE_APP_ID_ANDROID');
     const appIos = String.fromEnvironment('FIREBASE_APP_ID_IOS');
-    final appId = defaultTargetPlatform == TargetPlatform.iOS ? appIos : appAndroid;
-    if (apiKey.isEmpty || proyecto.isEmpty || remitente.isEmpty || appId.isEmpty) return null;
+    final appId = defaultTargetPlatform == TargetPlatform.iOS
+        ? appIos
+        : appAndroid;
+    if (apiKey.isEmpty ||
+        proyecto.isEmpty ||
+        remitente.isEmpty ||
+        appId.isEmpty)
+      return null;
     return FirebaseOptions(
       apiKey: apiKey,
       appId: appId,
@@ -85,7 +92,9 @@ class ProveedorPushFirebase implements ProveedorPush {
       await Firebase.initializeApp(options: opciones);
       return ProveedorPushFirebase._();
     } catch (e) {
-      debugPrint('Notificaciones desactivadas: no se pudo inicializar Firebase (${e.runtimeType}).');
+      debugPrint(
+        'Notificaciones desactivadas: no se pudo inicializar Firebase (${e.runtimeType}).',
+      );
       return const ProveedorPushInactivo();
     }
   }
@@ -103,7 +112,8 @@ class ProveedorPushFirebase implements ProveedorPush {
   Stream<String> get tokenRenovado => _mensajeria.onTokenRefresh;
 
   @override
-  Stream<AvisoPush> get avisoRecibido => FirebaseMessaging.onMessage.map(_aviso);
+  Stream<AvisoPush> get avisoRecibido =>
+      FirebaseMessaging.onMessage.map(_aviso);
 
   @override
   Stream<AvisoPush> get avisoAbierto async* {
@@ -113,8 +123,12 @@ class ProveedorPushFirebase implements ProveedorPush {
   }
 
   @override
-  String get plataforma => defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+  String get plataforma =>
+      defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
 
-  static AvisoPush _aviso(RemoteMessage m) =>
-      AvisoPush(titulo: m.notification?.title, cuerpo: m.notification?.body, ruta: m.data['ruta'] as String?);
+  static AvisoPush _aviso(RemoteMessage m) => AvisoPush(
+    titulo: m.notification?.title,
+    cuerpo: m.notification?.body,
+    ruta: m.data['ruta'] as String?,
+  );
 }

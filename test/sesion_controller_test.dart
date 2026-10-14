@@ -15,9 +15,19 @@ void main() {
   setUp(() {
     ahora = DateTime(2026, 10, 8, 9);
     tec = TecSimulado()
-      ..usuarios['presidente'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.presidenteMesa])
-      ..usuarios['nuevo'] = UsuarioSimulado(clave: 'Temporal1', roles: [RolTec.tribunal], permanente: false)
-      ..usuarios['varios'] = UsuarioSimulado(clave: 'Clave123', roles: ['Usuario', RolTec.iglesiaAdmin]);
+      ..usuarios['presidente'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.presidenteMesa],
+      )
+      ..usuarios['nuevo'] = UsuarioSimulado(
+        clave: 'Temporal1',
+        roles: [RolTec.tribunal],
+        permanente: false,
+      )
+      ..usuarios['varios'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: ['Usuario', RolTec.iglesiaAdmin],
+      );
   });
 
   test('inicia sesión, guarda solo el refresh y expone el perfil', () async {
@@ -32,14 +42,20 @@ void main() {
 
   test('credenciales incorrectas: error de TEC y sin sesión', () async {
     final sesion = tec.crearSesion(reloj: reloj);
-    await expectLater(sesion.iniciarSesion('presidente', 'mala'), throwsA(errorApi('CREDENCIALES_INVALIDAS')));
+    await expectLater(
+      sesion.iniciarSesion('presidente', 'mala'),
+      throwsA(errorApi('CREDENCIALES_INVALIDAS')),
+    );
     expect(sesion.autenticado, isFalse);
   });
 
   test('sin red lanza SinConexion', () async {
     tec.sinConexion = true;
     final sesion = tec.crearSesion(reloj: reloj);
-    await expectLater(sesion.iniciarSesion('presidente', 'Clave123'), throwsA(isA<SinConexion>()));
+    await expectLater(
+      sesion.iniciarSesion('presidente', 'Clave123'),
+      throwsA(isA<SinConexion>()),
+    );
   });
 
   test('varios roles: unión de permisos', () async {
@@ -48,16 +64,19 @@ void main() {
     expect(sesion.puedeAccederTribunal, isTrue);
   });
 
-  test('token de acceso vencido: renueva antes de la petición y rota el refresh', () async {
-    final almacen = AlmacenTokensMemoria();
-    final sesion = tec.crearSesion(almacen: almacen, reloj: reloj);
-    await sesion.iniciarSesion('presidente', 'Clave123');
-    ahora = ahora.add(const Duration(minutes: 5));
-    final perfil = await sesion.autenticada((token) async => token);
-    expect(perfil, 'acceso-2');
-    expect(almacen.refresh, 'refresh-2');
-    expect(tec.rutas, contains('/auth/refresh'));
-  });
+  test(
+    'token de acceso vencido: renueva antes de la petición y rota el refresh',
+    () async {
+      final almacen = AlmacenTokensMemoria();
+      final sesion = tec.crearSesion(almacen: almacen, reloj: reloj);
+      await sesion.iniciarSesion('presidente', 'Clave123');
+      ahora = ahora.add(const Duration(minutes: 5));
+      final perfil = await sesion.autenticada((token) async => token);
+      expect(perfil, 'acceso-2');
+      expect(almacen.refresh, 'refresh-2');
+      expect(tec.rutas, contains('/auth/refresh'));
+    },
+  );
 
   test('ante un 401 renueva una vez y reintenta', () async {
     final sesion = tec.crearSesion(reloj: reloj);
@@ -93,7 +112,10 @@ void main() {
     await otra.iniciarSesion('presidente', 'Clave123');
     await otra.cambiarClave('Clave123', 'Nueva1234');
     ahora = ahora.add(const Duration(minutes: 6));
-    await expectLater(sesion.autenticada((t) async => t), throwsA(errorApi('SESION_INVALIDA')));
+    await expectLater(
+      sesion.autenticada((t) async => t),
+      throwsA(errorApi('SESION_INVALIDA')),
+    );
     expect(sesion.autenticado, isFalse);
     expect(sesion.consumirAviso(), SesionController.avisoExpirada);
     expect(almacen.refresh, isNull);
@@ -121,31 +143,42 @@ void main() {
     expect(tec.rutas.where((r) => r == '/auth/refresh'), isNotEmpty);
   });
 
-  test('usuario no permanente: solo cambio de clave, luego sesión completa', () async {
-    final sesion = tec.crearSesion(reloj: reloj);
-    await sesion.iniciarSesion('nuevo', 'Temporal1');
-    expect(sesion.cambioClaveObligatorio, isTrue);
-    expect(sesion.puedeAccederTribunal, isFalse);
-    await expectLater(sesion.cambiarClave('mala', 'Nueva1234'), throwsA(errorApi('CLAVE_INCORRECTA')));
-    await sesion.cambiarClave('Temporal1', 'Nueva1234');
-    expect(sesion.cambioClaveObligatorio, isFalse);
-    expect(sesion.puedeAccederTribunal, isTrue);
-  });
+  test(
+    'usuario no permanente: solo cambio de clave, luego sesión completa',
+    () async {
+      final sesion = tec.crearSesion(reloj: reloj);
+      await sesion.iniciarSesion('nuevo', 'Temporal1');
+      expect(sesion.cambioClaveObligatorio, isTrue);
+      expect(sesion.puedeAccederTribunal, isFalse);
+      await expectLater(
+        sesion.cambiarClave('mala', 'Nueva1234'),
+        throwsA(errorApi('CLAVE_INCORRECTA')),
+      );
+      await sesion.cambiarClave('Temporal1', 'Nueva1234');
+      expect(sesion.cambioClaveObligatorio, isFalse);
+      expect(sesion.puedeAccederTribunal, isTrue);
+    },
+  );
 
-  test('restaurar: recupera la sesión guardada o borra un refresh inválido', () async {
-    final almacen = AlmacenTokensMemoria();
-    await tec.crearSesion(almacen: almacen, reloj: reloj).iniciarSesion('presidente', 'Clave123');
+  test(
+    'restaurar: recupera la sesión guardada o borra un refresh inválido',
+    () async {
+      final almacen = AlmacenTokensMemoria();
+      await tec
+          .crearSesion(almacen: almacen, reloj: reloj)
+          .iniciarSesion('presidente', 'Clave123');
 
-    final restaurada = tec.crearSesion(almacen: almacen, reloj: reloj);
-    await restaurada.restaurar();
-    expect(restaurada.autenticado, isTrue);
+      final restaurada = tec.crearSesion(almacen: almacen, reloj: reloj);
+      await restaurada.restaurar();
+      expect(restaurada.autenticado, isTrue);
 
-    final invalido = AlmacenTokensMemoria()..refresh = 'refresh-desconocido';
-    final sinSesion = tec.crearSesion(almacen: invalido, reloj: reloj);
-    await sinSesion.restaurar();
-    expect(sinSesion.autenticado, isFalse);
-    expect(invalido.refresh, isNull);
-  });
+      final invalido = AlmacenTokensMemoria()..refresh = 'refresh-desconocido';
+      final sinSesion = tec.crearSesion(almacen: invalido, reloj: reloj);
+      await sinSesion.restaurar();
+      expect(sinSesion.autenticado, isFalse);
+      expect(invalido.refresh, isNull);
+    },
+  );
 
   test('restaurar sin red conserva el refresh', () async {
     final almacen = AlmacenTokensMemoria()..refresh = 'refresh-x';

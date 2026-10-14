@@ -1,8 +1,12 @@
+import 'dart:io' show TlsException;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:app_conpociiech/app.dart';
+import 'package:app_conpociiech/core/api/cliente_http.dart';
 import 'package:app_conpociiech/core/config/entorno.dart';
 import 'package:app_conpociiech/core/router/app_router.dart';
 import 'package:app_conpociiech/core/sesion/roles.dart';
@@ -11,13 +15,23 @@ import 'package:app_conpociiech/features/tribunal/pantalla_tribunal.dart';
 
 import 'tec_simulado.dart';
 
-
 late TecSimulado tec;
 
-Future<SesionController> montarApp(WidgetTester tester, {String? usuario, String clave = 'Clave123'}) async {
+Future<SesionController> montarApp(
+  WidgetTester tester, {
+  String? usuario,
+  String clave = 'Clave123',
+}) async {
   final sesion = tec.crearSesion();
-  if (usuario != null) await tester.runAsync(() => sesion.iniciarSesion(usuario, clave));
-  await tester.pumpWidget(AppConpociiech(entorno: Entorno.desdeUrl(Entorno.urlPorDefecto), sesion: sesion, cliente: tec.api));
+  if (usuario != null)
+    await tester.runAsync(() => sesion.iniciarSesion(usuario, clave));
+  await tester.pumpWidget(
+    AppConpociiech(
+      entorno: Entorno.desdeUrl(Entorno.urlPorDefecto),
+      sesion: sesion,
+      cliente: tec.api,
+    ),
+  );
   await tester.pumpAndSettle();
   return sesion;
 }
@@ -38,10 +52,23 @@ Future<void> tocarYEsperar(WidgetTester tester, Finder boton) async {
 void main() {
   setUp(() {
     tec = TecSimulado()
-      ..usuarios['presidente'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.presidenteMesa])
-      ..usuarios['iglesia'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.iglesiaAdmin])
-      ..usuarios['otro'] = UsuarioSimulado(clave: 'Clave123', roles: ['Usuario'])
-      ..usuarios['nuevo'] = UsuarioSimulado(clave: 'Temporal1', roles: [RolTec.tribunal], permanente: false);
+      ..usuarios['presidente'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.presidenteMesa],
+      )
+      ..usuarios['iglesia'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.iglesiaAdmin],
+      )
+      ..usuarios['otro'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: ['Usuario'],
+      )
+      ..usuarios['nuevo'] = UsuarioSimulado(
+        clave: 'Temporal1',
+        roles: [RolTec.tribunal],
+        permanente: false,
+      );
   });
 
   group('Inicio público', () {
@@ -76,7 +103,9 @@ void main() {
       expect(find.text('Persona iglesia'), findsOneWidget);
     });
 
-    testWidgets('autenticado sin rol del módulo no lo ve ni puede entrar', (tester) async {
+    testWidgets('autenticado sin rol del módulo no lo ve ni puede entrar', (
+      tester,
+    ) async {
       await montarApp(tester, usuario: 'otro');
       expect(find.text('Tribunal Electoral'), findsNothing);
       irA(tester, Rutas.tribunal);
@@ -84,7 +113,9 @@ void main() {
       expect(find.text('CONPOCIIECH'), findsOneWidget);
     });
 
-    testWidgets('cerrar sesión desde el módulo vuelve a exigir autenticación', (tester) async {
+    testWidgets('cerrar sesión desde el módulo vuelve a exigir autenticación', (
+      tester,
+    ) async {
       await montarApp(tester, usuario: 'presidente');
       irA(tester, Rutas.tribunal);
       await tester.pumpAndSettle();
@@ -105,18 +136,23 @@ void main() {
       expect(find.text('Ingrese su contraseña.'), findsOneWidget);
     });
 
-    testWidgets('credenciales incorrectas: mensaje de TEC y contraseña descartada', (tester) async {
-      final sesion = await montarApp(tester);
-      irA(tester, Rutas.iniciarSesion);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextFormField).at(0), 'presidente');
-      await tester.enterText(find.byType(TextFormField).at(1), 'incorrecta');
-      await tocarYEsperar(tester, find.text('Ingresar'));
-      expect(find.text('Usuario o contraseña incorrectos.'), findsOneWidget);
-      expect(sesion.autenticado, isFalse);
-      final clave = tester.widget<EditableText>(find.byType(EditableText).at(1));
-      expect(clave.controller.text, isEmpty);
-    });
+    testWidgets(
+      'credenciales incorrectas: mensaje de TEC y contraseña descartada',
+      (tester) async {
+        final sesion = await montarApp(tester);
+        irA(tester, Rutas.iniciarSesion);
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextFormField).at(0), 'presidente');
+        await tester.enterText(find.byType(TextFormField).at(1), 'incorrecta');
+        await tocarYEsperar(tester, find.text('Ingresar'));
+        expect(find.text('Usuario o contraseña incorrectos.'), findsOneWidget);
+        expect(sesion.autenticado, isFalse);
+        final clave = tester.widget<EditableText>(
+          find.byType(EditableText).at(1),
+        );
+        expect(clave.controller.text, isEmpty);
+      },
+    );
 
     testWidgets('al autenticarse vuelve al destino solicitado', (tester) async {
       await montarApp(tester);
@@ -142,7 +178,9 @@ void main() {
   });
 
   group('Cambio de clave obligatorio', () {
-    testWidgets('usuario no permanente solo puede cambiar su clave', (tester) async {
+    testWidgets('usuario no permanente solo puede cambiar su clave', (
+      tester,
+    ) async {
       await montarApp(tester, usuario: 'nuevo', clave: 'Temporal1');
       expect(find.text('Guardar contraseña'), findsOneWidget);
       irA(tester, Rutas.tribunal);
@@ -158,7 +196,10 @@ void main() {
       await tester.ensureVisible(find.text('Guardar contraseña'));
       await tester.tap(find.text('Guardar contraseña'));
       await tester.pumpAndSettle();
-      expect(find.text('La contraseña no cumple los requisitos.'), findsOneWidget);
+      expect(
+        find.text('La contraseña no cumple los requisitos.'),
+        findsOneWidget,
+      );
       expect(tec.rutas, isNot(contains('/auth/cambiar-clave')));
     });
 
@@ -172,7 +213,11 @@ void main() {
     });
 
     testWidgets('cancelar cierra la sesión', (tester) async {
-      final sesion = await montarApp(tester, usuario: 'nuevo', clave: 'Temporal1');
+      final sesion = await montarApp(
+        tester,
+        usuario: 'nuevo',
+        clave: 'Temporal1',
+      );
       await tocarYEsperar(tester, find.text('Cancelar y cerrar sesión'));
       expect(sesion.autenticado, isFalse);
       expect(find.text('Iniciar sesión'), findsOneWidget);
@@ -181,13 +226,74 @@ void main() {
 
   group('Entorno', () {
     test('acepta la URL https de TEC', () {
-      expect(Entorno.desdeUrl('https://tribunal.conpociiech.org/api/v1').apiBaseUrl.host,
-          'tribunal.conpociiech.org');
+      expect(
+        Entorno.desdeUrl(
+          'https://tribunal.conpociiech.org/api/v1',
+        ).apiBaseUrl.host,
+        'tribunal.conpociiech.org',
+      );
     });
 
     test('rechaza http y URLs relativas', () {
-      expect(() => Entorno.desdeUrl('http://tribunal.conpociiech.org/api/v1'), throwsArgumentError);
+      expect(
+        () => Entorno.desdeUrl('http://tribunal.conpociiech.org/api/v1'),
+        throwsArgumentError,
+      );
       expect(() => Entorno.desdeUrl('/api/v1'), throwsArgumentError);
+    });
+
+    test('la CA de desarrollo solo se usa fuera de release', () {
+      const ca =
+          '  -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----  ';
+      expect(
+        Entorno.desdeUrl(
+          'https://10.10.8.14/api/v1',
+          caDesarrollo: ca,
+          release: true,
+        ).caDesarrollo,
+        isNull,
+      );
+      expect(
+        Entorno.desdeUrl(
+          'https://10.10.8.14/api/v1',
+          caDesarrollo: ca,
+          release: false,
+        ).caDesarrollo,
+        startsWith('-----BEGIN CERTIFICATE-----'),
+      );
+      expect(
+        Entorno.desdeUrl(
+          'https://10.10.8.14/api/v1',
+          caDesarrollo: ' ',
+          release: false,
+        ).caDesarrollo,
+        isNull,
+      );
+    });
+
+    test(
+      'sin CA de desarrollo usa el cliente estándar; una CA inválida no se acepta',
+      () {
+        expect(crearClienteHttp(), isA<http.Client>());
+        expect(
+          () => crearClienteHttp(caDesarrollo: 'no es un certificado'),
+          throwsA(isA<TlsException>()),
+        );
+      },
+    );
+
+    test('la CA en una sola línea base64 se rearma como PEM (Windows)', () {
+      final cuerpo = 'A' * 130;
+      final pem = pemDesdeDefinicion(cuerpo);
+      final lineas = pem.trim().split('\n');
+      expect(lineas.first, '-----BEGIN CERTIFICATE-----');
+      expect(lineas.last, '-----END CERTIFICATE-----');
+      expect(lineas.sublist(1, lineas.length - 1).map((l) => l.length), [64, 64, 2]);
+      // Un PEM completo se respeta (también con «\n» literales).
+      expect(
+        pemDesdeDefinicion(r'-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----'),
+        '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
+      );
     });
   });
 }

@@ -51,3 +51,6 @@ app.*.map.json
 
 # Entornos locales con valores de --dart-define
 /env/*.local.json
+
+# Configuración local de desarrollo (URL de la PC y CA de mkcert). No subir.
+entorno_local.json

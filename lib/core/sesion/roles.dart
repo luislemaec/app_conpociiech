@@ -13,7 +13,12 @@ abstract final class RolTec {
 
   /// Roles con acceso al módulo Tribunal Electoral en la primera versión.
   /// Un usuario con varios roles recibe la unión de sus permisos.
-  static const Set<String> moduloTribunal = {administrador, tribunal, iglesiaAdmin, presidenteMesa};
+  static const Set<String> moduloTribunal = {
+    administrador,
+    tribunal,
+    iglesiaAdmin,
+    presidenteMesa,
+  };
 
   /// Secciones del módulo (mismos roles que exige TEC en ConsultaMovilService).
   static const Set<String> seccionMesa = {presidenteMesa};

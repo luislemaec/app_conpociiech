@@ -9,38 +9,58 @@ class ApiTribunal {
   final ClienteApi _cliente;
   final SesionController _sesion;
 
-  Future<Map<String, dynamic>?> _get(String ruta) =>
-      _sesion.autenticada((token) => _cliente.enviar('GET', ruta, token: token));
+  Future<Map<String, dynamic>?> _get(String ruta) => _sesion.autenticada(
+    (token) => _cliente.enviar('GET', ruta, token: token),
+  );
 
   Future<List<dynamic>> _lista(String ruta) => _sesion.autenticada(
-      (token) => _cliente.enviarLista('GET', ruta, token: token));
+    (token) => _cliente.enviarLista('GET', ruta, token: token),
+  );
 
-  Future<MesaPresidente> mesaPresidente() async => MesaPresidente.desdeJson((await _get('/tribunal/presidente/mesa'))!);
+  Future<MesaPresidente> mesaPresidente() async =>
+      MesaPresidente.desdeJson((await _get('/tribunal/presidente/mesa'))!);
 
-  Future<List<Elector>> padronPresidente() async =>
-      (await _lista('/tribunal/presidente/padron')).map((e) => Elector.desdeJson(e as Map<String, dynamic>)).toList();
+  Future<List<Elector>> padronPresidente() async => (await _lista(
+    '/tribunal/presidente/padron',
+  )).map((e) => Elector.desdeJson(e as Map<String, dynamic>)).toList();
 
-  Future<IglesiaResumen> iglesia() async => IglesiaResumen.desdeJson((await _get('/tribunal/iglesia'))!);
+  Future<IglesiaResumen> iglesia() async =>
+      IglesiaResumen.desdeJson((await _get('/tribunal/iglesia'))!);
 
-  Future<PaginaMiembros> miembros(
-      {String? busqueda, bool? habilitado, bool? revisado, int pagina = 0, int tamano = 30}) async {
-    final consulta = Uri(queryParameters: {
-      if (busqueda != null && busqueda.trim().isNotEmpty) 'busqueda': busqueda.trim(),
-      if (habilitado != null) 'habilitado': '$habilitado',
-      // revisado = false: pendientes de revisión.
-      if (revisado != null) 'revisado': '$revisado',
-      'pagina': '$pagina',
-      'tamano': '$tamano',
-    }).query;
-    return PaginaMiembros.desdeJson((await _get('/tribunal/iglesia/miembros?$consulta'))!);
+  Future<PaginaMiembros> miembros({
+    String? busqueda,
+    bool? habilitado,
+    bool? revisado,
+    int pagina = 0,
+    int tamano = 30,
+  }) async {
+    final consulta = Uri(
+      queryParameters: {
+        if (busqueda != null && busqueda.trim().isNotEmpty)
+          'busqueda': busqueda.trim(),
+        if (habilitado != null) 'habilitado': '$habilitado',
+        // revisado = false: pendientes de revisión.
+        if (revisado != null) 'revisado': '$revisado',
+        'pagina': '$pagina',
+        'tamano': '$tamano',
+      },
+    ).query;
+    return PaginaMiembros.desdeJson(
+      (await _get('/tribunal/iglesia/miembros?$consulta'))!,
+    );
   }
 
   /// Habilita o deshabilita a un miembro para participar en las elecciones. TEC valida el
   /// cronograma y que el miembro sea de la iglesia del usuario, y lo marca como revisado.
   Future<Miembro> cambiarHabilitacion(int miembroId, bool habilitado) async {
-    final json = await _sesion.autenticada((token) => _cliente.enviar(
-        'PUT', '/tribunal/iglesia/miembros/$miembroId/habilitacion',
-        token: token, cuerpo: {'habilitado': habilitado}));
+    final json = await _sesion.autenticada(
+      (token) => _cliente.enviar(
+        'PUT',
+        '/tribunal/iglesia/miembros/$miembroId/habilitacion',
+        token: token,
+        cuerpo: {'habilitado': habilitado},
+      ),
+    );
     return Miembro.desdeJson(json!);
   }
 
@@ -48,36 +68,56 @@ class ApiTribunal {
 
   static const String _acta = '/tribunal/presidente/acta';
 
-  Future<ActaPresidente> acta() async => ActaPresidente.desdeJson((await _get(_acta))!);
+  Future<ActaPresidente> acta() async =>
+      ActaPresidente.desdeJson((await _get(_acta))!);
 
-  Future<ActaPresidente> abrirMesa(String? observacion) => _escribir('POST', '$_acta/apertura',
-      {if (observacion != null && observacion.trim().isNotEmpty) 'observacion': observacion.trim()});
+  Future<ActaPresidente> abrirMesa(String? observacion) =>
+      _escribir('POST', '$_acta/apertura', {
+        if (observacion != null && observacion.trim().isNotEmpty)
+          'observacion': observacion.trim(),
+      });
 
   /// Guarda el conteo como borrador. [votos] debe traer todas las categorías del acta.
-  Future<ActaPresidente> guardarConteo(Map<int, int> votos) => _escribir('PUT', '$_acta/conteo', _conteo(votos));
+  Future<ActaPresidente> guardarConteo(Map<int, int> votos) =>
+      _escribir('PUT', '$_acta/conteo', _conteo(votos));
 
   /// Cierra la mesa con el conteo ya guardado. Después no se puede modificar.
-  Future<ActaPresidente> cerrarMesa(Map<int, int> votos) => _escribir('POST', '$_acta/cierre', _conteo(votos));
+  Future<ActaPresidente> cerrarMesa(Map<int, int> votos) =>
+      _escribir('POST', '$_acta/cierre', _conteo(votos));
 
   /// Sube la foto (JPEG) del acta física firmada de la mesa cerrada.
   Future<ActaPresidente> subirActaFisica(List<int> jpeg) async {
     final json = await _sesion.autenticada(
-        (token) => _cliente.enviarArchivo('PUT', '$_acta/acta-fisica', jpeg, tipo: 'image/jpeg', token: token));
+      (token) => _cliente.enviarArchivo(
+        'PUT',
+        '$_acta/acta-fisica',
+        jpeg,
+        tipo: 'image/jpeg',
+        token: token,
+      ),
+    );
     return ActaPresidente.desdeJson(json!);
   }
 
-  Future<ActaPresidente> _escribir(String metodo, String ruta, Object cuerpo) async {
-    final json = await _sesion.autenticada((token) => _cliente.enviar(metodo, ruta, token: token, cuerpo: cuerpo));
+  Future<ActaPresidente> _escribir(
+    String metodo,
+    String ruta,
+    Object cuerpo,
+  ) async {
+    final json = await _sesion.autenticada(
+      (token) => _cliente.enviar(metodo, ruta, token: token, cuerpo: cuerpo),
+    );
     return ActaPresidente.desdeJson(json!);
   }
 
   static Map<String, Object> _conteo(Map<int, int> votos) => {
-        'votos': [
-          for (final v in votos.entries) {'categoriaId': v.key, 'votos': v.value},
-        ],
-      };
+    'votos': [
+      for (final v in votos.entries) {'categoriaId': v.key, 'votos': v.value},
+    ],
+  };
 
-  Future<ResumenProceso> resumenProceso() async => ResumenProceso.desdeJson((await _get('/tribunal/proceso/resumen'))!);
+  Future<ResumenProceso> resumenProceso() async =>
+      ResumenProceso.desdeJson((await _get('/tribunal/proceso/resumen'))!);
 
   // ---------------------------------------------------------------- Revisión (Administrador, Tribunal)
 
@@ -85,28 +125,47 @@ class ApiTribunal {
       DetalleMesa.desdeJson((await _get('/tribunal/proceso/mesas/$mesaId'))!);
 
   /// Foto del acta física vigente (JPEG). TEC registra la consulta en la bitácora.
-  Future<List<int>> fotoActa(int mesaId) =>
-      _sesion.autenticada((token) => _cliente.obtenerArchivo('/tribunal/proceso/mesas/$mesaId/acta-fisica', token: token));
+  Future<List<int>> fotoActa(int mesaId) => _sesion.autenticada(
+    (token) => _cliente.obtenerArchivo(
+      '/tribunal/proceso/mesas/$mesaId/acta-fisica',
+      token: token,
+    ),
+  );
 
   /// Marca como datos oficiales lo registrado, tras confirmar el cotejo con el acta física.
-  Future<DetalleMesa> validarActa(int mesaId) =>
-      _revisarActa('/tribunal/proceso/mesas/$mesaId/acta-fisica/validacion', {'cotejoConfirmado': true});
+  Future<DetalleMesa> validarActa(int mesaId) => _revisarActa(
+    '/tribunal/proceso/mesas/$mesaId/acta-fisica/validacion',
+    {'cotejoConfirmado': true},
+  );
 
   /// Observa o rechaza el acta con un motivo; la mesa vuelve al Presidente.
-  Future<DetalleMesa> devolverActa(int mesaId, {required bool rechazar, required String motivo}) =>
-      _revisarActa('/tribunal/proceso/mesas/$mesaId/acta-fisica/devolucion',
-          {'estado': rechazar ? 'RECHAZADA' : 'OBSERVADA', 'motivo': motivo.trim()});
+  Future<DetalleMesa> devolverActa(
+    int mesaId, {
+    required bool rechazar,
+    required String motivo,
+  }) => _revisarActa('/tribunal/proceso/mesas/$mesaId/acta-fisica/devolucion', {
+    'estado': rechazar ? 'RECHAZADA' : 'OBSERVADA',
+    'motivo': motivo.trim(),
+  });
 
-  Future<DetalleMesa> _revisarActa(String ruta, Map<String, Object> cuerpo) async {
-    final json = await _sesion.autenticada((token) => _cliente.enviar('POST', ruta, token: token, cuerpo: cuerpo));
+  Future<DetalleMesa> _revisarActa(
+    String ruta,
+    Map<String, Object> cuerpo,
+  ) async {
+    final json = await _sesion.autenticada(
+      (token) => _cliente.enviar('POST', ruta, token: token, cuerpo: cuerpo),
+    );
     return DetalleMesa.desdeJson(json!);
   }
 
-  Future<List<AvanceMesa>> avanceMesas() async =>
-      (await _lista('/tribunal/proceso/mesas')).map((e) => AvanceMesa.desdeJson(e as Map<String, dynamic>)).toList();
+  Future<List<AvanceMesa>> avanceMesas() async => (await _lista(
+    '/tribunal/proceso/mesas',
+  )).map((e) => AvanceMesa.desdeJson(e as Map<String, dynamic>)).toList();
 
   Future<ResultadosProceso> resultadosProceso() async =>
-      ResultadosProceso.desdeJson((await _get('/tribunal/proceso/resultados'))!);
+      ResultadosProceso.desdeJson(
+        (await _get('/tribunal/proceso/resultados'))!,
+      );
 }
 
 /// Estados del escrutinio de TEC (`EstadoEscrutinio`) con su texto para el usuario.
@@ -122,7 +181,8 @@ abstract final class EstadoMesa {
     'REABIERTO': 'Reabierta',
   };
 
-  static String etiqueta(String? estado) => etiquetas[estado] ?? estado ?? 'Sin estado';
+  static String etiqueta(String? estado) =>
+      etiquetas[estado] ?? estado ?? 'Sin estado';
 }
 
 DateTime? _fecha(Object? valor) {
@@ -136,23 +196,31 @@ int _entero(Object? valor) => (valor as num?)?.toInt() ?? 0;
 class Proceso {
   const Proceso({required this.nombre, this.faseVigente});
 
-  factory Proceso.desdeJson(Map<String, dynamic> j) =>
-      Proceso(nombre: j['nombre'] as String? ?? '', faseVigente: j['faseVigente'] as String?);
+  factory Proceso.desdeJson(Map<String, dynamic> j) => Proceso(
+    nombre: j['nombre'] as String? ?? '',
+    faseVigente: j['faseVigente'] as String?,
+  );
 
   final String nombre;
   final String? faseVigente;
 }
 
 class Ubicacion {
-  const Ubicacion({this.mesaId, required this.mesa, this.recinto, this.parroquia, this.canton});
+  const Ubicacion({
+    this.mesaId,
+    required this.mesa,
+    this.recinto,
+    this.parroquia,
+    this.canton,
+  });
 
   factory Ubicacion.desdeJson(Map<String, dynamic> j) => Ubicacion(
-        mesaId: (j['mesaId'] as num?)?.toInt(),
-        mesa: j['mesa'] as String? ?? '',
-        recinto: j['recinto'] as String?,
-        parroquia: j['parroquia'] as String?,
-        canton: j['canton'] as String?,
-      );
+    mesaId: (j['mesaId'] as num?)?.toInt(),
+    mesa: j['mesa'] as String? ?? '',
+    recinto: j['recinto'] as String?,
+    parroquia: j['parroquia'] as String?,
+    canton: j['canton'] as String?,
+  );
 
   final int? mesaId;
   final String mesa;
@@ -188,16 +256,19 @@ class ResultadosMesa {
   });
 
   factory ResultadosMesa.desdeJson(Map<String, dynamic> j) => ResultadosMesa(
-        sufragantes: _entero(j['sufragantes']),
-        votosRegistrados: _entero(j['votosRegistrados']),
-        votosValidos: _entero(j['votosValidos']),
-        votosBlancos: _entero(j['votosBlancos']),
-        votosNulos: _entero(j['votosNulos']),
-        categorias: [
-          for (final c in (j['categorias'] as List<dynamic>? ?? const []))
-            VotosCategoria((c as Map<String, dynamic>)['categoria'] as String? ?? '', _entero(c['votos'])),
-        ],
-      );
+    sufragantes: _entero(j['sufragantes']),
+    votosRegistrados: _entero(j['votosRegistrados']),
+    votosValidos: _entero(j['votosValidos']),
+    votosBlancos: _entero(j['votosBlancos']),
+    votosNulos: _entero(j['votosNulos']),
+    categorias: [
+      for (final c in (j['categorias'] as List<dynamic>? ?? const []))
+        VotosCategoria(
+          (c as Map<String, dynamic>)['categoria'] as String? ?? '',
+          _entero(c['votos']),
+        ),
+    ],
+  );
 
   final int sufragantes;
   final int votosRegistrados;
@@ -220,18 +291,23 @@ class MesaPresidente {
   });
 
   factory MesaPresidente.desdeJson(Map<String, dynamic> j) => MesaPresidente(
-        proceso: Proceso.desdeJson(j['proceso'] as Map<String, dynamic>),
-        ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
-        estado: j['estado'] as String? ?? 'PENDIENTE',
-        electores: _entero(j['electores']),
-        fechaApertura: _fecha(j['fechaApertura']),
-        fechaCierre: _fecha(j['fechaCierre']),
-        junta: [
-          for (final m in (j['junta'] as List<dynamic>? ?? const []))
-            MiembroJunta((m as Map<String, dynamic>)['cargo'] as String?, m['nombre'] as String?),
-        ],
-        resultados: j['resultados'] == null ? null : ResultadosMesa.desdeJson(j['resultados'] as Map<String, dynamic>),
-      );
+    proceso: Proceso.desdeJson(j['proceso'] as Map<String, dynamic>),
+    ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
+    estado: j['estado'] as String? ?? 'PENDIENTE',
+    electores: _entero(j['electores']),
+    fechaApertura: _fecha(j['fechaApertura']),
+    fechaCierre: _fecha(j['fechaCierre']),
+    junta: [
+      for (final m in (j['junta'] as List<dynamic>? ?? const []))
+        MiembroJunta(
+          (m as Map<String, dynamic>)['cargo'] as String?,
+          m['nombre'] as String?,
+        ),
+    ],
+    resultados: j['resultados'] == null
+        ? null
+        : ResultadosMesa.desdeJson(j['resultados'] as Map<String, dynamic>),
+  );
 
   final Proceso proceso;
   final Ubicacion ubicacion;
@@ -246,8 +322,11 @@ class MesaPresidente {
 class Elector {
   const Elector({required this.nombre, this.iglesia, this.sufrago});
 
-  factory Elector.desdeJson(Map<String, dynamic> j) =>
-      Elector(nombre: j['nombre'] as String? ?? '', iglesia: j['iglesia'] as String?, sufrago: j['sufrago'] as bool?);
+  factory Elector.desdeJson(Map<String, dynamic> j) => Elector(
+    nombre: j['nombre'] as String? ?? '',
+    iglesia: j['iglesia'] as String?,
+    sufrago: j['sufrago'] as bool?,
+  );
 
   final String nombre;
   final String? iglesia;
@@ -271,19 +350,19 @@ class IglesiaResumen {
   });
 
   factory IglesiaResumen.desdeJson(Map<String, dynamic> j) => IglesiaResumen(
-        permiteEdicion: j['permiteEdicion'] as bool? ?? false,
-        nombre: j['nombre'] as String? ?? '',
-        comunidad: j['comunidad'] as String?,
-        parroquia: j['parroquia'] as String?,
-        canton: j['canton'] as String?,
-        provincia: j['provincia'] as String?,
-        totalMiembros: _entero(j['totalMiembros']),
-        habilitados: _entero(j['miembrosHabilitados']),
-        noHabilitados: _entero(j['miembrosNoHabilitados']),
-        informacionCompleta: _entero(j['informacionCompleta']),
-        pendientesRevision: _entero(j['pendientesRevision']),
-        enOtraIglesia: _entero(j['enOtraIglesia']),
-      );
+    permiteEdicion: j['permiteEdicion'] as bool? ?? false,
+    nombre: j['nombre'] as String? ?? '',
+    comunidad: j['comunidad'] as String?,
+    parroquia: j['parroquia'] as String?,
+    canton: j['canton'] as String?,
+    provincia: j['provincia'] as String?,
+    totalMiembros: _entero(j['totalMiembros']),
+    habilitados: _entero(j['miembrosHabilitados']),
+    noHabilitados: _entero(j['miembrosNoHabilitados']),
+    informacionCompleta: _entero(j['informacionCompleta']),
+    pendientesRevision: _entero(j['pendientesRevision']),
+    enOtraIglesia: _entero(j['enOtraIglesia']),
+  );
 
   final String nombre;
   final String? comunidad;
@@ -300,18 +379,24 @@ class IglesiaResumen {
   /// El cronograma vigente permite cambiar la habilitación de los miembros.
   final bool permiteEdicion;
 
-  String get lugar => [parroquia, canton, provincia].whereType<String>().join(', ');
+  String get lugar =>
+      [parroquia, canton, provincia].whereType<String>().join(', ');
 }
 
 class Miembro {
-  const Miembro({required this.id, required this.nombre, required this.habilitado, required this.revisado});
+  const Miembro({
+    required this.id,
+    required this.nombre,
+    required this.habilitado,
+    required this.revisado,
+  });
 
   factory Miembro.desdeJson(Map<String, dynamic> j) => Miembro(
-        id: _entero(j['id']),
-        nombre: j['nombre'] as String? ?? '',
-        habilitado: j['habilitado'] as bool? ?? false,
-        revisado: j['revisado'] as bool? ?? false,
-      );
+    id: _entero(j['id']),
+    nombre: j['nombre'] as String? ?? '',
+    habilitado: j['habilitado'] as bool? ?? false,
+    revisado: j['revisado'] as bool? ?? false,
+  );
 
   final int id;
   final String nombre;
@@ -323,9 +408,12 @@ class PaginaMiembros {
   const PaginaMiembros({required this.total, required this.elementos});
 
   factory PaginaMiembros.desdeJson(Map<String, dynamic> j) => PaginaMiembros(
-        total: _entero(j['total']),
-        elementos: [for (final e in (j['elementos'] as List<dynamic>? ?? const [])) Miembro.desdeJson(e as Map<String, dynamic>)],
-      );
+    total: _entero(j['total']),
+    elementos: [
+      for (final e in (j['elementos'] as List<dynamic>? ?? const []))
+        Miembro.desdeJson(e as Map<String, dynamic>),
+    ],
+  );
 
   final int total;
   final List<Miembro> elementos;
@@ -346,21 +434,24 @@ class ResumenProceso {
   });
 
   factory ResumenProceso.desdeJson(Map<String, dynamic> j) => ResumenProceso(
-        alertas: [
-          for (final a in (j['alertas'] as List<dynamic>? ?? const [])) AlertaProceso.desdeJson(a as Map<String, dynamic>),
-        ],
-        proceso: Proceso.desdeJson(j['proceso'] as Map<String, dynamic>),
-        iglesias: _entero(j['iglesias']),
-        recintos: _entero(j['recintos']),
-        mesas: _entero(j['mesas']),
-        electores: _entero(j['electores']),
-        mesasConJuntaCompleta: _entero(j['mesasConJuntaCompleta']),
-        mesasCerradas: _entero(j['mesasCerradas']),
-        porcentajeEscrutinio: _entero(j['porcentajeEscrutinio']),
-        mesasPorEstado: {
-          for (final e in (j['mesasPorEstado'] as Map<String, dynamic>? ?? const {}).entries) e.key: _entero(e.value),
-        },
-      );
+    alertas: [
+      for (final a in (j['alertas'] as List<dynamic>? ?? const []))
+        AlertaProceso.desdeJson(a as Map<String, dynamic>),
+    ],
+    proceso: Proceso.desdeJson(j['proceso'] as Map<String, dynamic>),
+    iglesias: _entero(j['iglesias']),
+    recintos: _entero(j['recintos']),
+    mesas: _entero(j['mesas']),
+    electores: _entero(j['electores']),
+    mesasConJuntaCompleta: _entero(j['mesasConJuntaCompleta']),
+    mesasCerradas: _entero(j['mesasCerradas']),
+    porcentajeEscrutinio: _entero(j['porcentajeEscrutinio']),
+    mesasPorEstado: {
+      for (final e
+          in (j['mesasPorEstado'] as Map<String, dynamic>? ?? const {}).entries)
+        e.key: _entero(e.value),
+    },
+  );
 
   final Proceso proceso;
   final int iglesias;
@@ -377,13 +468,17 @@ class ResumenProceso {
 }
 
 class AlertaProceso {
-  const AlertaProceso({required this.texto, required this.cantidad, required this.critica});
+  const AlertaProceso({
+    required this.texto,
+    required this.cantidad,
+    required this.critica,
+  });
 
   factory AlertaProceso.desdeJson(Map<String, dynamic> j) => AlertaProceso(
-        texto: j['texto'] as String? ?? '',
-        cantidad: _entero(j['cantidad']),
-        critica: j['severidad'] == 'danger',
-      );
+    texto: j['texto'] as String? ?? '',
+    cantidad: _entero(j['cantidad']),
+    critica: j['severidad'] == 'danger',
+  );
 
   final String texto;
   final int cantidad;
@@ -413,28 +508,36 @@ class DetalleMesa {
   });
 
   factory DetalleMesa.desdeJson(Map<String, dynamic> j) => DetalleMesa(
-        ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
-        estado: j['estado'] as String? ?? 'PENDIENTE',
-        electores: _entero(j['electores']),
-        fechaApertura: _fecha(j['fechaApertura']),
-        fechaCierre: _fecha(j['fechaCierre']),
-        junta: [
-          for (final m in (j['junta'] as List<dynamic>? ?? const []))
-            MiembroJunta((m as Map<String, dynamic>)['cargo'] as String?, m['nombre'] as String?),
-        ],
-        conteo: [
-          for (final c in (j['conteo'] as List<dynamic>? ?? const []))
-            VotosCategoria((c as Map<String, dynamic>)['categoria'] as String? ?? '', _entero(c['votos'])),
-        ],
-        votosRegistrados: (j['votosRegistrados'] as num?)?.toInt(),
-        votosValidos: (j['votosValidos'] as num?)?.toInt(),
-        votosBlancos: (j['votosBlancos'] as num?)?.toInt(),
-        votosNulos: (j['votosNulos'] as num?)?.toInt(),
-        cuadre: (j['cuadre'] as num?)?.toInt(),
-        observacionConteo: j['observacionConteo'] as String?,
-        actaFisica: j['actaFisica'] == null ? null : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
-        puedeRevisarActa: j['puedeRevisarActa'] as bool? ?? false,
-      );
+    ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
+    estado: j['estado'] as String? ?? 'PENDIENTE',
+    electores: _entero(j['electores']),
+    fechaApertura: _fecha(j['fechaApertura']),
+    fechaCierre: _fecha(j['fechaCierre']),
+    junta: [
+      for (final m in (j['junta'] as List<dynamic>? ?? const []))
+        MiembroJunta(
+          (m as Map<String, dynamic>)['cargo'] as String?,
+          m['nombre'] as String?,
+        ),
+    ],
+    conteo: [
+      for (final c in (j['conteo'] as List<dynamic>? ?? const []))
+        VotosCategoria(
+          (c as Map<String, dynamic>)['categoria'] as String? ?? '',
+          _entero(c['votos']),
+        ),
+    ],
+    votosRegistrados: (j['votosRegistrados'] as num?)?.toInt(),
+    votosValidos: (j['votosValidos'] as num?)?.toInt(),
+    votosBlancos: (j['votosBlancos'] as num?)?.toInt(),
+    votosNulos: (j['votosNulos'] as num?)?.toInt(),
+    cuadre: (j['cuadre'] as num?)?.toInt(),
+    observacionConteo: j['observacionConteo'] as String?,
+    actaFisica: j['actaFisica'] == null
+        ? null
+        : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
+    puedeRevisarActa: j['puedeRevisarActa'] as bool? ?? false,
+  );
 
   final Ubicacion ubicacion;
   final String estado;
@@ -456,13 +559,17 @@ class DetalleMesa {
 }
 
 class AvanceMesa {
-  const AvanceMesa({required this.ubicacion, required this.estado, required this.juntaRegistrada});
+  const AvanceMesa({
+    required this.ubicacion,
+    required this.estado,
+    required this.juntaRegistrada,
+  });
 
   factory AvanceMesa.desdeJson(Map<String, dynamic> j) => AvanceMesa(
-        ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
-        estado: j['estado'] as String? ?? 'PENDIENTE',
-        juntaRegistrada: j['juntaRegistrada'] as bool? ?? false,
-      );
+    ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
+    estado: j['estado'] as String? ?? 'PENDIENTE',
+    juntaRegistrada: j['juntaRegistrada'] as bool? ?? false,
+  );
 
   final Ubicacion ubicacion;
   final String estado;
@@ -470,7 +577,11 @@ class AvanceMesa {
 }
 
 class ResultadoCategoria {
-  const ResultadoCategoria({required this.nombre, required this.votos, required this.porcentaje});
+  const ResultadoCategoria({
+    required this.nombre,
+    required this.votos,
+    required this.porcentaje,
+  });
 
   final String nombre;
   final int votos;
@@ -490,7 +601,8 @@ class ResultadosProceso {
     this.actualizado,
   });
 
-  factory ResultadosProceso.desdeJson(Map<String, dynamic> j) => ResultadosProceso(
+  factory ResultadosProceso.desdeJson(Map<String, dynamic> j) =>
+      ResultadosProceso(
         proceso: j['proceso'] as String? ?? '',
         mesas: _entero(j['mesas']),
         mesasCerradas: _entero(j['mesasCerradas']),
@@ -502,7 +614,10 @@ class ResultadosProceso {
         categorias: [
           for (final c in (j['categorias'] as List<dynamic>? ?? const []))
             ResultadoCategoria(
-              nombre: ((c as Map<String, dynamic>)['lista'] as String?) ?? c['categoria'] as String? ?? '',
+              nombre:
+                  ((c as Map<String, dynamic>)['lista'] as String?) ??
+                  c['categoria'] as String? ??
+                  '',
               votos: _entero(c['votos']),
               porcentaje: (c['porcentaje'] as num?)?.toDouble() ?? 0,
             ),
@@ -522,14 +637,19 @@ class ResultadosProceso {
 
 /// Una categoría del acta (lista, blancos, nulos o papeletas no utilizadas) con sus votos.
 class CategoriaConteo {
-  const CategoriaConteo({required this.categoriaId, required this.nombre, required this.papeletas, required this.votos});
+  const CategoriaConteo({
+    required this.categoriaId,
+    required this.nombre,
+    required this.papeletas,
+    required this.votos,
+  });
 
   factory CategoriaConteo.desdeJson(Map<String, dynamic> j) => CategoriaConteo(
-        categoriaId: _entero(j['categoriaId']),
-        nombre: j['nombre'] as String? ?? '',
-        papeletas: j['papeletas'] as bool? ?? false,
-        votos: _entero(j['votos']),
-      );
+    categoriaId: _entero(j['categoriaId']),
+    nombre: j['nombre'] as String? ?? '',
+    papeletas: j['papeletas'] as bool? ?? false,
+    votos: _entero(j['votos']),
+  );
 
   final int categoriaId;
   final String nombre;
@@ -540,25 +660,29 @@ class CategoriaConteo {
 }
 
 class ActaFisicaInfo {
-  const ActaFisicaInfo({this.version, required this.estadoRevision, this.observacion});
+  const ActaFisicaInfo({
+    this.version,
+    required this.estadoRevision,
+    this.observacion,
+  });
 
   factory ActaFisicaInfo.desdeJson(Map<String, dynamic> j) => ActaFisicaInfo(
-        version: (j['version'] as num?)?.toInt(),
-        estadoRevision: j['estadoRevision'] as String? ?? '',
-        observacion: j['observacion'] as String?,
-      );
+    version: (j['version'] as num?)?.toInt(),
+    estadoRevision: j['estadoRevision'] as String? ?? '',
+    observacion: j['observacion'] as String?,
+  );
 
   final int? version;
   final String estadoRevision;
   final String? observacion;
 
   String get etiqueta => switch (estadoRevision) {
-        'PENDIENTE_REVISION' => 'Pendiente de revisión del Tribunal',
-        'VALIDADA' => 'Validada: dato oficial',
-        'OBSERVADA' => 'Observada por el Tribunal',
-        'RECHAZADA' => 'Rechazada por el Tribunal',
-        _ => estadoRevision,
-      };
+    'PENDIENTE_REVISION' => 'Pendiente de revisión del Tribunal',
+    'VALIDADA' => 'Validada: dato oficial',
+    'OBSERVADA' => 'Observada por el Tribunal',
+    'RECHAZADA' => 'Rechazada por el Tribunal',
+    _ => estadoRevision,
+  };
 }
 
 /// Escrutinio de la mesa del Presidente. Los indicadores `puede*` los calcula TEC; la App
@@ -582,24 +706,26 @@ class ActaPresidente {
   });
 
   factory ActaPresidente.desdeJson(Map<String, dynamic> j) => ActaPresidente(
-        ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
-        estado: j['estado'] as String? ?? 'PENDIENTE',
-        sufragantes: _entero(j['sufragantes']),
-        votosEmitidos: _entero(j['votosEmitidos']),
-        papeletasNoUtilizadas: _entero(j['papeletasNoUtilizadas']),
-        cuadre: _entero(j['cuadre']),
-        observacionConteo: j['observacionConteo'] as String?,
-        motivoBloqueoApertura: j['motivoBloqueoApertura'] as String?,
-        puedeAbrir: j['puedeAbrir'] as bool? ?? false,
-        puedeEditarConteo: j['puedeEditarConteo'] as bool? ?? false,
-        puedeCerrar: j['puedeCerrar'] as bool? ?? false,
-        puedeSubirActaFisica: j['puedeSubirActaFisica'] as bool? ?? false,
-        categorias: [
-          for (final c in (j['categorias'] as List<dynamic>? ?? const []))
-            CategoriaConteo.desdeJson(c as Map<String, dynamic>),
-        ],
-        actaFisica: j['actaFisica'] == null ? null : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
-      );
+    ubicacion: Ubicacion.desdeJson(j['ubicacion'] as Map<String, dynamic>),
+    estado: j['estado'] as String? ?? 'PENDIENTE',
+    sufragantes: _entero(j['sufragantes']),
+    votosEmitidos: _entero(j['votosEmitidos']),
+    papeletasNoUtilizadas: _entero(j['papeletasNoUtilizadas']),
+    cuadre: _entero(j['cuadre']),
+    observacionConteo: j['observacionConteo'] as String?,
+    motivoBloqueoApertura: j['motivoBloqueoApertura'] as String?,
+    puedeAbrir: j['puedeAbrir'] as bool? ?? false,
+    puedeEditarConteo: j['puedeEditarConteo'] as bool? ?? false,
+    puedeCerrar: j['puedeCerrar'] as bool? ?? false,
+    puedeSubirActaFisica: j['puedeSubirActaFisica'] as bool? ?? false,
+    categorias: [
+      for (final c in (j['categorias'] as List<dynamic>? ?? const []))
+        CategoriaConteo.desdeJson(c as Map<String, dynamic>),
+    ],
+    actaFisica: j['actaFisica'] == null
+        ? null
+        : ActaFisicaInfo.desdeJson(j['actaFisica'] as Map<String, dynamic>),
+  );
 
   final Ubicacion ubicacion;
   final String estado;

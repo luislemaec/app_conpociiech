@@ -15,15 +15,25 @@ import 'tec_simulado.dart';
 
 late TecSimulado tec;
 
-Future<SesionController> montarApp(WidgetTester tester, {String? usuario}) async {
+Future<SesionController> montarApp(
+  WidgetTester tester, {
+  String? usuario,
+}) async {
   // Teléfono: barra de navegación inferior.
   tester.view.physicalSize = const Size(390, 844);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.resetPhysicalSize);
   addTearDown(tester.view.resetDevicePixelRatio);
   final sesion = tec.crearSesion();
-  if (usuario != null) await tester.runAsync(() => sesion.iniciarSesion(usuario, 'Clave123'));
-  await tester.pumpWidget(AppConpociiech(entorno: Entorno.desdeUrl(Entorno.urlPorDefecto), sesion: sesion, cliente: tec.api));
+  if (usuario != null)
+    await tester.runAsync(() => sesion.iniciarSesion(usuario, 'Clave123'));
+  await tester.pumpWidget(
+    AppConpociiech(
+      entorno: Entorno.desdeUrl(Entorno.urlPorDefecto),
+      sesion: sesion,
+      cliente: tec.api,
+    ),
+  );
   await tester.pumpAndSettle();
   return sesion;
 }
@@ -36,17 +46,31 @@ Future<void> tocar(WidgetTester tester, Finder objetivo) async {
   await tester.pumpAndSettle();
 }
 
-Finder pestana(String nombre) => find.descendant(of: find.byType(NavigationBar), matching: find.text(nombre));
+Finder pestana(String nombre) => find.descendant(
+  of: find.byType(NavigationBar),
+  matching: find.text(nombre),
+);
 
 void main() {
   setUp(() {
     tec = TecSimulado()
-      ..usuarios['iglesia'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.iglesiaAdmin])
-      ..usuarios['presidente'] = UsuarioSimulado(clave: 'Clave123', roles: [RolTec.presidenteMesa])
-      ..usuarios['otro'] = UsuarioSimulado(clave: 'Clave123', roles: ['Usuario']);
+      ..usuarios['iglesia'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.iglesiaAdmin],
+      )
+      ..usuarios['presidente'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: [RolTec.presidenteMesa],
+      )
+      ..usuarios['otro'] = UsuarioSimulado(
+        clave: 'Clave123',
+        roles: ['Usuario'],
+      );
   });
 
-  testWidgets('Inicio muestra el logo oficial y las tres pestañas', (tester) async {
+  testWidgets('Inicio muestra el logo oficial y las tres pestañas', (
+    tester,
+  ) async {
     await montarApp(tester);
     expect(find.byType(LogoInstitucional), findsWidgets);
     expect(find.text(ContenidoInstitucional.lema), findsOneWidget);
@@ -55,14 +79,19 @@ void main() {
     }
   });
 
-  testWidgets('Organización muestra solo el contenido publicado', (tester) async {
+  testWidgets('Organización muestra solo el contenido publicado', (
+    tester,
+  ) async {
     await montarApp(tester);
     await tocar(tester, pestana('Organización'));
     expect(find.text(ContenidoInstitucional.quienesSomos), findsOneWidget);
     for (final area in ContenidoInstitucional.areas) {
       for (final institucion in area.instituciones) {
-        await tester.scrollUntilVisible(find.text(institucion.nombre), 200,
-            scrollable: find.byType(Scrollable).last);
+        await tester.scrollUntilVisible(
+          find.text(institucion.nombre),
+          200,
+          scrollable: find.byType(Scrollable).last,
+        );
         expect(find.text(institucion.nombre), findsOneWidget);
       }
     }
@@ -71,32 +100,46 @@ void main() {
     expect(find.text('AUTORIDADES'), findsNothing);
   });
 
-  testWidgets('Servicios sin sesión lleva al inicio de sesión y vuelve al Tribunal', (tester) async {
-    await montarApp(tester);
-    await tocar(tester, pestana('Servicios'));
-    expect(find.text('Requiere iniciar sesión'), findsOneWidget);
-    await tocar(tester, find.text('Sistema del Tribunal Electoral (TEC)'));
-    expect(find.text('Ingresar'), findsOneWidget);
-    expect(find.byType(LogoTribunal), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField).at(0), 'iglesia');
-    await tester.enterText(find.byType(TextFormField).at(1), 'Clave123');
-    await tocar(tester, find.text('Ingresar'));
-    expect(find.byType(PantallaTribunal), findsOneWidget);
-  });
+  testWidgets(
+    'Servicios sin sesión lleva al inicio de sesión y vuelve al Tribunal',
+    (tester) async {
+      await montarApp(tester);
+      await tocar(tester, pestana('Servicios'));
+      expect(find.text('Requiere iniciar sesión'), findsOneWidget);
+      await tocar(tester, find.text('Sistema del Tribunal Electoral (TEC)'));
+      expect(find.text('Ingresar'), findsOneWidget);
+      expect(find.byType(LogoTribunal), findsOneWidget);
+      await tester.enterText(find.byType(TextFormField).at(0), 'iglesia');
+      await tester.enterText(find.byType(TextFormField).at(1), 'Clave123');
+      await tocar(tester, find.text('Ingresar'));
+      expect(find.byType(PantallaTribunal), findsOneWidget);
+    },
+  );
 
-  testWidgets('Servicios muestra solo las secciones de los roles del usuario', (tester) async {
+  testWidgets('Servicios muestra solo las secciones de los roles del usuario', (
+    tester,
+  ) async {
     await montarApp(tester, usuario: 'iglesia');
     await tocar(tester, pestana('Servicios'));
     expect(find.text('Mi iglesia'), findsOneWidget);
     expect(find.text('Mi mesa'), findsNothing);
-    await tester.scrollUntilVisible(find.text('Cambiar contraseña'), 200, scrollable: find.byType(Scrollable).last);
+    await tester.scrollUntilVisible(
+      find.text('Cambiar contraseña'),
+      200,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Cambiar contraseña'), findsOneWidget);
   });
 
-  testWidgets('usuario sin rol del Tribunal no recibe acceso desde Servicios', (tester) async {
+  testWidgets('usuario sin rol del Tribunal no recibe acceso desde Servicios', (
+    tester,
+  ) async {
     await montarApp(tester, usuario: 'otro');
     await tocar(tester, pestana('Servicios'));
-    expect(find.textContaining('no tiene funciones del Tribunal Electoral'), findsOneWidget);
+    expect(
+      find.textContaining('no tiene funciones del Tribunal Electoral'),
+      findsOneWidget,
+    );
     expect(find.text('Mi mesa'), findsNothing);
     expect(find.text('Mi iglesia'), findsNothing);
   });

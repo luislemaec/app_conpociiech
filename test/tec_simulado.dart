@@ -12,7 +12,11 @@ import 'package:app_conpociiech/core/sesion/sesion_controller.dart';
 
 /// Usuario de prueba del servidor simulado (no son credenciales reales).
 class UsuarioSimulado {
-  UsuarioSimulado({required this.clave, required this.roles, this.permanente = true});
+  UsuarioSimulado({
+    required this.clave,
+    required this.roles,
+    this.permanente = true,
+  });
 
   String clave;
   final List<String> roles;
@@ -27,7 +31,8 @@ class TecSimulado {
   final Map<String, String> _accesos = {}; // access -> usuario
   final Map<String, String> _refresh = {}; // refresh -> usuario
   final Set<String> _refreshUsados = {};
-  final Set<String> _restringidos = {}; // access de sesiones solo para cambiar clave
+  final Set<String> _restringidos =
+      {}; // access de sesiones solo para cambiar clave
   int _secuencia = 0;
   bool sinConexion = false;
   final List<String> rutas = [];
@@ -38,7 +43,10 @@ class TecSimulado {
   late final http.Client cliente = MockClient(_atender);
 
   /// Cliente de la App apuntando al servidor simulado.
-  late final ClienteApi api = ClienteApi(Entorno.desdeUrl(Entorno.urlPorDefecto).apiBaseUrl, cliente: cliente);
+  late final ClienteApi api = ClienteApi(
+    Entorno.desdeUrl(Entorno.urlPorDefecto).apiBaseUrl,
+    cliente: cliente,
+  );
 
   /// Tokens de avisos push registrados (token → usuario).
   final Map<String, String> dispositivos = {};
@@ -46,29 +54,41 @@ class TecSimulado {
   /// Consultas recibidas con sus parámetros (p. ej. paginación de miembros).
   final List<Uri> consultas = [];
 
-  SesionController crearSesion({AlmacenTokens? almacen, DateTime Function()? reloj}) => SesionController(
-        api: ApiAutenticacion(api, reloj: reloj),
-        almacen: almacen ?? AlmacenTokensMemoria(),
-        reloj: reloj,
-      );
+  SesionController crearSesion({
+    AlmacenTokens? almacen,
+    DateTime Function()? reloj,
+  }) => SesionController(
+    api: ApiAutenticacion(api, reloj: reloj),
+    almacen: almacen ?? AlmacenTokensMemoria(),
+    reloj: reloj,
+  );
 
   Future<http.Response> _atender(http.Request peticion) async {
     if (sinConexion) throw http.ClientException('sin red');
     final ruta = peticion.url.path.replaceFirst('/api/v1', '');
     rutas.add(ruta);
-    final esJson = peticion.headers['Content-Type']?.startsWith('application/json') ?? false;
+    final esJson =
+        peticion.headers['Content-Type']?.startsWith('application/json') ??
+        false;
     final cuerpo = !esJson || peticion.body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(peticion.body) as Map<String, dynamic>;
     ultimoBinario = esJson ? null : peticion.bodyBytes;
     ultimoTipo = peticion.headers['Content-Type'];
-    final bearer = peticion.headers['Authorization']?.replaceFirst('Bearer ', '');
+    final bearer = peticion.headers['Authorization']?.replaceFirst(
+      'Bearer ',
+      '',
+    );
 
     switch (ruta) {
       case '/auth/login':
         final usuario = usuarios[cuerpo['usuario']];
         if (usuario == null || usuario.clave != cuerpo['clave']) {
-          return _error(401, 'CREDENCIALES_INVALIDAS', 'Usuario o contraseña incorrectos.');
+          return _error(
+            401,
+            'CREDENCIALES_INVALIDAS',
+            'Usuario o contraseña incorrectos.',
+          );
         }
         return _emitir(cuerpo['usuario'] as String);
       case '/auth/refresh':
@@ -93,7 +113,11 @@ class TecSimulado {
       case '/auth/cambiar-clave':
         final usuario = usuarios[nombre]!;
         if (cuerpo['claveActual'] != usuario.clave) {
-          return _error(400, 'CLAVE_INCORRECTA', 'La contraseña actual no es correcta.');
+          return _error(
+            400,
+            'CLAVE_INCORRECTA',
+            'La contraseña actual no es correcta.',
+          );
         }
         usuario
           ..clave = cuerpo['claveNueva'] as String
@@ -102,25 +126,42 @@ class TecSimulado {
         return _emitir(nombre);
     }
     if (_restringidos.contains(bearer)) {
-      return _error(403, 'CAMBIO_CLAVE_OBLIGATORIO', 'Debe cambiar su contraseña.');
+      return _error(
+        403,
+        'CAMBIO_CLAVE_OBLIGATORIO',
+        'Debe cambiar su contraseña.',
+      );
     }
     if (ruta == '/dispositivos' && peticion.method == 'POST') {
       dispositivos[cuerpo['token'] as String] = nombre;
       return http.Response('', 204);
     }
     if (ruta == '/dispositivos/baja' && peticion.method == 'POST') {
-      if (dispositivos[cuerpo['token']] == nombre) dispositivos.remove(cuerpo['token']);
+      if (dispositivos[cuerpo['token']] == nombre)
+        dispositivos.remove(cuerpo['token']);
       return http.Response('', 204);
     }
     consultas.add(peticion.url);
-    return _tribunal(ruta, usuarios[nombre]!.roles, peticion.url.queryParameters, peticion.method, cuerpo);
+    return _tribunal(
+      ruta,
+      usuarios[nombre]!.roles,
+      peticion.url.queryParameters,
+      peticion.method,
+      cuerpo,
+    );
   }
 
   // ------------------------------------------------------------ Módulo Tribunal
 
   /// Miembros simulados de la iglesia (más de una página).
   final List<Map<String, dynamic>> miembros = [
-    for (var i = 1; i <= 45; i++) {'id': i, 'nombre': 'Miembro ${i.toString().padLeft(2, '0')}', 'habilitado': i.isOdd, 'revisado': i % 3 == 0},
+    for (var i = 1; i <= 45; i++)
+      {
+        'id': i,
+        'nombre': 'Miembro ${i.toString().padLeft(2, '0')}',
+        'habilitado': i.isOdd,
+        'revisado': i % 3 == 0,
+      },
   ];
 
   /// Estado del escrutinio de la mesa simulada del Presidente.
@@ -149,42 +190,87 @@ class TecSimulado {
   String? observacionMesa8;
 
   http.Response _revision(
-      int mesaId, String? actaFisica, String? accion, String metodo, Map<String, dynamic> cuerpo, List<String> roles) {
+    int mesaId,
+    String? actaFisica,
+    String? accion,
+    String metodo,
+    Map<String, dynamic> cuerpo,
+    List<String> roles,
+  ) {
     // Decidir la revisión es solo del Tribunal; el Administrador consulta.
     final tribunal = roles.contains('SITEC-Tribunal');
-    if (mesaId != 8) return _error(404, 'MESA_NO_ENCONTRADA', 'La mesa no existe en el proceso electoral activo.');
+    if (mesaId != 8)
+      return _error(
+        404,
+        'MESA_NO_ENCONTRADA',
+        'La mesa no existe en el proceso electoral activo.',
+      );
     Map<String, dynamic> detalle() => {
-          'ubicacion': {'mesaId': 8, 'mesa': 'MESA 8', 'recinto': 'Colegio Norte', 'parroquia': 'Lizarzaburu', 'canton': 'Guano'},
-          'estado': estadoMesa8,
-          'electores': 10,
-          'junta': [
-            {'cargo': 'PRESIDENTE', 'nombre': 'Ortiz Carla'},
-          ],
-          'conteo': [
-            {'categoria': 'LISTA 1', 'tipo': 'LISTA', 'votos': 6},
-            {'categoria': 'BLANCOS', 'tipo': null, 'votos': 2},
-          ],
-          'cuadre': 0,
-          'actaFisica': {'version': 1, 'estadoRevision': revisionMesa8, 'observacion': observacionMesa8},
-          'puedeRevisarActa': tribunal && estadoMesa8 == 'CERRADO' && revisionMesa8 != 'VALIDADA',
-        };
+      'ubicacion': {
+        'mesaId': 8,
+        'mesa': 'MESA 8',
+        'recinto': 'Colegio Norte',
+        'parroquia': 'Lizarzaburu',
+        'canton': 'Guano',
+      },
+      'estado': estadoMesa8,
+      'electores': 10,
+      'junta': [
+        {'cargo': 'PRESIDENTE', 'nombre': 'Ortiz Carla'},
+      ],
+      'conteo': [
+        {'categoria': 'LISTA 1', 'tipo': 'LISTA', 'votos': 6},
+        {'categoria': 'BLANCOS', 'tipo': null, 'votos': 2},
+      ],
+      'cuadre': 0,
+      'actaFisica': {
+        'version': 1,
+        'estadoRevision': revisionMesa8,
+        'observacion': observacionMesa8,
+      },
+      'puedeRevisarActa':
+          tribunal && estadoMesa8 == 'CERRADO' && revisionMesa8 != 'VALIDADA',
+    };
     if (actaFisica == null && metodo == 'GET') return _json(200, detalle());
     if (accion == null && metodo == 'GET') {
-      return http.Response.bytes([0xFF, 0xD8, 0xFF, 0xE0], 200, headers: {'content-type': 'image/jpeg'});
+      return http.Response.bytes(
+        [0xFF, 0xD8, 0xFF, 0xE0],
+        200,
+        headers: {'content-type': 'image/jpeg'},
+      );
     }
-    if (metodo != 'POST') return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
-    if (!tribunal) return _error(403, 'SIN_PERMISO', 'No tiene permiso para esta operación.');
+    if (metodo != 'POST')
+      return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
+    if (!tribunal)
+      return _error(
+        403,
+        'SIN_PERMISO',
+        'No tiene permiso para esta operación.',
+      );
     if (estadoMesa8 != 'CERRADO' || revisionMesa8 == 'VALIDADA') {
-      return _error(409, 'REGLA_REVISION', 'La mesa debe estar cerrada para revisar su acta física.');
+      return _error(
+        409,
+        'REGLA_REVISION',
+        'La mesa debe estar cerrada para revisar su acta física.',
+      );
     }
     if (accion == '/validacion') {
       if (cuerpo['cotejoConfirmado'] != true) {
-        return _error(400, 'COTEJO_REQUERIDO', 'Confirme que el acta física coincide con lo registrado.');
+        return _error(
+          400,
+          'COTEJO_REQUERIDO',
+          'Confirme que el acta física coincide con lo registrado.',
+        );
       }
       revisionMesa8 = 'VALIDADA';
     } else {
       final motivo = (cuerpo['motivo'] as String? ?? '').trim();
-      if (motivo.isEmpty) return _error(409, 'REGLA_REVISION', 'Indique el motivo de la devolución del acta.');
+      if (motivo.isEmpty)
+        return _error(
+          409,
+          'REGLA_REVISION',
+          'Indique el motivo de la devolución del acta.',
+        );
       revisionMesa8 = cuerpo['estado'] as String;
       observacionMesa8 = motivo;
       estadoMesa8 = 'REABIERTO';
@@ -202,32 +288,58 @@ class TecSimulado {
         emitidos += votosActa[id] ?? 0;
       }
     }
-    const editables = {'ABIERTO', 'EN_CONTEO', 'CONTEO_REGISTRADO', 'REABIERTO'};
+    const editables = {
+      'ABIERTO',
+      'EN_CONTEO',
+      'CONTEO_REGISTRADO',
+      'REABIERTO',
+    };
     return {
-      'ubicacion': {'mesaId': 7, 'mesa': 'MESA 7', 'recinto': 'Escuela Central'},
+      'ubicacion': {
+        'mesaId': 7,
+        'mesa': 'MESA 7',
+        'recinto': 'Escuela Central',
+      },
       'estado': estadoActa,
       'sufragantes': sufragantesActa,
       'votosEmitidos': emitidos,
       'papeletasNoUtilizadas': papeletas,
       'cuadre': sufragantesActa - emitidos - papeletas,
-      'motivoBloqueoApertura': estadoActa == 'PENDIENTE' ? bloqueoApertura : null,
+      'motivoBloqueoApertura': estadoActa == 'PENDIENTE'
+          ? bloqueoApertura
+          : null,
       'puedeAbrir': estadoActa == 'PENDIENTE' && bloqueoApertura == null,
       'puedeEditarConteo': editables.contains(estadoActa),
       'puedeCerrar': editables.contains(estadoActa) && estadoActa != 'ABIERTO',
-      'puedeSubirActaFisica': estadoActa == 'CERRADO' && actaFisica?['estadoRevision'] != 'VALIDADA',
+      'puedeSubirActaFisica':
+          estadoActa == 'CERRADO' &&
+          actaFisica?['estadoRevision'] != 'VALIDADA',
       'categorias': [
         for (final (id, nombre, esPapeletas) in categoriasActa)
-          {'categoriaId': id, 'nombre': nombre, 'papeletas': esPapeletas, 'votos': votosActa[id] ?? 0},
+          {
+            'categoriaId': id,
+            'nombre': nombre,
+            'papeletas': esPapeletas,
+            'votos': votosActa[id] ?? 0,
+          },
       ],
       'actaFisica': actaFisica,
     };
   }
 
-  http.Response _escrutinio(String ruta, String metodo, Map<String, dynamic> cuerpo) {
-    http.Response regla(String mensaje) => _error(409, 'REGLA_ESCRUTINIO', mensaje);
+  http.Response _escrutinio(
+    String ruta,
+    String metodo,
+    Map<String, dynamic> cuerpo,
+  ) {
+    http.Response regla(String mensaje) =>
+        _error(409, 'REGLA_ESCRUTINIO', mensaje);
     Map<int, int>? votos() {
       final lista = cuerpo['votos'] as List<dynamic>? ?? const [];
-      final m = {for (final v in lista) (v as Map<String, dynamic>)['categoriaId'] as int: v['votos'] as int};
+      final m = {
+        for (final v in lista)
+          (v as Map<String, dynamic>)['categoriaId'] as int: v['votos'] as int,
+      };
       return m.length == categoriasActa.length ? m : null;
     }
 
@@ -235,41 +347,71 @@ class TecSimulado {
       case ('GET', '/tribunal/presidente/acta'):
         return _json(200, _acta());
       case ('POST', '/tribunal/presidente/acta/apertura'):
-        if (estadoActa != 'PENDIENTE') return regla('La apertura de la mesa ya fue registrada.');
+        if (estadoActa != 'PENDIENTE')
+          return regla('La apertura de la mesa ya fue registrada.');
         if (bloqueoApertura != null) return regla(bloqueoApertura!);
         estadoActa = 'ABIERTO';
         return _json(200, _acta());
       case ('PUT', '/tribunal/presidente/acta/conteo'):
-        if (estadoActa == 'PENDIENTE') return regla('Debe registrar la apertura de la mesa antes de guardar el conteo.');
-        if (estadoActa == 'CERRADO') return regla('El escrutinio ya se encuentra cerrado.');
+        if (estadoActa == 'PENDIENTE')
+          return regla(
+            'Debe registrar la apertura de la mesa antes de guardar el conteo.',
+          );
+        if (estadoActa == 'CERRADO')
+          return regla('El escrutinio ya se encuentra cerrado.');
         final v = votos();
-        if (v == null) return _error(400, 'SOLICITUD_INVALIDA', 'Registre los votos de cada categoría una sola vez.');
+        if (v == null)
+          return _error(
+            400,
+            'SOLICITUD_INVALIDA',
+            'Registre los votos de cada categoría una sola vez.',
+          );
         votosActa
           ..clear()
           ..addAll(v);
         estadoActa = _acta()['cuadre'] == 0 ? 'CONTEO_REGISTRADO' : 'EN_CONTEO';
         return _json(200, _acta());
       case ('POST', '/tribunal/presidente/acta/cierre'):
-        if (!{'EN_CONTEO', 'CONTEO_REGISTRADO', 'REABIERTO'}.contains(estadoActa)) {
+        if (!{
+          'EN_CONTEO',
+          'CONTEO_REGISTRADO',
+          'REABIERTO',
+        }.contains(estadoActa)) {
           return regla('Debe guardar el conteo antes de cerrar la mesa.');
         }
         final v = votos();
-        if (v == null) return _error(400, 'SOLICITUD_INVALIDA', 'Registre los votos de cada categoría una sola vez.');
+        if (v == null)
+          return _error(
+            400,
+            'SOLICITUD_INVALIDA',
+            'Registre los votos de cada categoría una sola vez.',
+          );
         votosActa
           ..clear()
           ..addAll(v);
         estadoActa = 'CERRADO';
         return _json(200, _acta());
       case ('PUT', '/tribunal/presidente/acta/acta-fisica'):
-        if (estadoActa != 'CERRADO') return regla('La mesa debe estar cerrada para cargar el acta física.');
-        actaFisica = {'version': (actaFisica?['version'] as int? ?? 0) + 1, 'estadoRevision': 'PENDIENTE_REVISION'};
+        if (estadoActa != 'CERRADO')
+          return regla(
+            'La mesa debe estar cerrada para cargar el acta física.',
+          );
+        actaFisica = {
+          'version': (actaFisica?['version'] as int? ?? 0) + 1,
+          'estadoRevision': 'PENDIENTE_REVISION',
+        };
         return _json(200, _acta());
     }
     return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
   }
 
   http.Response _tribunal(
-      String ruta, List<String> roles, Map<String, String> parametros, String metodo, Map<String, dynamic> cuerpo) {
+    String ruta,
+    List<String> roles,
+    Map<String, String> parametros,
+    String metodo,
+    Map<String, dynamic> cuerpo,
+  ) {
     bool permite(Set<String> requeridos) => roles.any(requeridos.contains);
     const presidente = {'SITEC-Presidente-mesa'};
     const iglesia = {'SITEC-IglesiaAdmin'};
@@ -277,36 +419,83 @@ class TecSimulado {
     final requeridos = ruta.startsWith('/tribunal/presidente')
         ? presidente
         : ruta.startsWith('/tribunal/iglesia')
-            ? iglesia
-            : ruta.startsWith('/tribunal/proceso')
-                ? proceso
-                : null;
-    if (requeridos == null) return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
-    if (!permite(requeridos)) return _error(403, 'SIN_PERMISO', 'No tiene permiso para esta operación.');
+        ? iglesia
+        : ruta.startsWith('/tribunal/proceso')
+        ? proceso
+        : null;
+    if (requeridos == null)
+      return _error(404, 'RECURSO_NO_ENCONTRADO', 'La solicitud no es válida.');
+    if (!permite(requeridos))
+      return _error(
+        403,
+        'SIN_PERMISO',
+        'No tiene permiso para esta operación.',
+      );
 
-    if (ruta.startsWith('/tribunal/presidente/acta')) return _escrutinio(ruta, metodo, cuerpo);
+    if (ruta.startsWith('/tribunal/presidente/acta'))
+      return _escrutinio(ruta, metodo, cuerpo);
 
-    final mesa = RegExp(r'^/tribunal/proceso/mesas/(\d+)(/acta-fisica(/validacion|/devolucion)?)?$').firstMatch(ruta);
-    if (mesa != null) return _revision(int.parse(mesa.group(1)!), mesa.group(2), mesa.group(3), metodo, cuerpo, roles);
+    final mesa = RegExp(
+      r'^/tribunal/proceso/mesas/(\d+)(/acta-fisica(/validacion|/devolucion)?)?$',
+    ).firstMatch(ruta);
+    if (mesa != null)
+      return _revision(
+        int.parse(mesa.group(1)!),
+        mesa.group(2),
+        mesa.group(3),
+        metodo,
+        cuerpo,
+        roles,
+      );
 
-    final habilitacion = RegExp(r'^/tribunal/iglesia/miembros/(\d+)/habilitacion$').firstMatch(ruta);
+    final habilitacion = RegExp(
+      r'^/tribunal/iglesia/miembros/(\d+)/habilitacion$',
+    ).firstMatch(ruta);
     if (habilitacion != null && metodo == 'PUT') {
       if (!edicionAbierta) {
-        return _error(409, 'EDICION_CERRADA', 'La actualización del padrón está cerrada por el cronograma electoral.');
+        return _error(
+          409,
+          'EDICION_CERRADA',
+          'La actualización del padrón está cerrada por el cronograma electoral.',
+        );
       }
       final id = int.parse(habilitacion.group(1)!);
       final i = miembros.indexWhere((m) => m['id'] == id);
-      if (i < 0) return _error(404, 'MIEMBRO_NO_DISPONIBLE', 'El miembro no existe o ya no está activo en la iglesia.');
-      if (cuerpo['habilitado'] is! bool) return _error(400, 'SOLICITUD_INVALIDA', 'Indique si el miembro queda habilitado.');
-      miembros[i] = {...miembros[i], 'habilitado': cuerpo['habilitado'], 'revisado': true};
+      if (i < 0)
+        return _error(
+          404,
+          'MIEMBRO_NO_DISPONIBLE',
+          'El miembro no existe o ya no está activo en la iglesia.',
+        );
+      if (cuerpo['habilitado'] is! bool)
+        return _error(
+          400,
+          'SOLICITUD_INVALIDA',
+          'Indique si el miembro queda habilitado.',
+        );
+      miembros[i] = {
+        ...miembros[i],
+        'habilitado': cuerpo['habilitado'],
+        'revisado': true,
+      };
       return _json(200, miembros[i]);
     }
 
-    const ubicacion = {'mesaId': 7, 'mesa': 'MESA 7', 'recinto': 'Escuela Central', 'parroquia': 'Matriz', 'canton': 'Riobamba'};
+    const ubicacion = {
+      'mesaId': 7,
+      'mesa': 'MESA 7',
+      'recinto': 'Escuela Central',
+      'parroquia': 'Matriz',
+      'canton': 'Riobamba',
+    };
     switch (ruta) {
       case '/tribunal/presidente/mesa':
         return _json(200, {
-          'proceso': {'id': 1, 'nombre': 'Elecciones 2026', 'faseVigente': 'Sufragio'},
+          'proceso': {
+            'id': 1,
+            'nombre': 'Elecciones 2026',
+            'faseVigente': 'Sufragio',
+          },
           'ubicacion': ubicacion,
           'estado': estadoMesa,
           'fechaApertura': '2026-10-08T08:00:00Z',
@@ -330,9 +519,21 @@ class TecSimulado {
         });
       case '/tribunal/presidente/padron':
         return _json(200, [
-          {'nombre': 'Andrade Rosa', 'iglesia': 'Iglesia Central', 'sufrago': true},
-          {'nombre': 'Bravo Juan', 'iglesia': 'Iglesia Norte', 'sufrago': false},
-          {'nombre': 'Cruz María', 'iglesia': 'Iglesia Central', 'sufrago': null},
+          {
+            'nombre': 'Andrade Rosa',
+            'iglesia': 'Iglesia Central',
+            'sufrago': true,
+          },
+          {
+            'nombre': 'Bravo Juan',
+            'iglesia': 'Iglesia Norte',
+            'sufrago': false,
+          },
+          {
+            'nombre': 'Cruz María',
+            'iglesia': 'Iglesia Central',
+            'sufrago': null,
+          },
         ]);
       case '/tribunal/iglesia':
         return _json(200, {
@@ -346,19 +547,30 @@ class TecSimulado {
           'miembrosHabilitados': 23,
           'miembrosNoHabilitados': 22,
           'informacionCompleta': 40,
-          'pendientesRevision': miembros.where((m) => m['revisado'] != true).length,
+          'pendientesRevision': miembros
+              .where((m) => m['revisado'] != true)
+              .length,
           'enOtraIglesia': 1,
           'permiteEdicion': edicionAbierta,
         });
       case '/tribunal/iglesia/miembros':
         final busqueda = parametros['busqueda']?.toLowerCase();
-        final habilitado = parametros['habilitado'] == null ? null : parametros['habilitado'] == 'true';
-        final revisado = parametros['revisado'] == null ? null : parametros['revisado'] == 'true';
+        final habilitado = parametros['habilitado'] == null
+            ? null
+            : parametros['habilitado'] == 'true';
+        final revisado = parametros['revisado'] == null
+            ? null
+            : parametros['revisado'] == 'true';
         final filtrados = miembros
-            .where((m) =>
-                (busqueda == null || (m['nombre'] as String).toLowerCase().contains(busqueda)) &&
-                (habilitado == null || m['habilitado'] == habilitado) &&
-                (revisado == null || (m['revisado'] == true) == revisado))
+            .where(
+              (m) =>
+                  (busqueda == null ||
+                      (m['nombre'] as String).toLowerCase().contains(
+                        busqueda,
+                      )) &&
+                  (habilitado == null || m['habilitado'] == habilitado) &&
+                  (revisado == null || (m['revisado'] == true) == revisado),
+            )
             .toList();
         final pagina = int.parse(parametros['pagina'] ?? '0');
         final tamano = int.parse(parametros['tamano'] ?? '30');
@@ -370,7 +582,11 @@ class TecSimulado {
         });
       case '/tribunal/proceso/resumen':
         return _json(200, {
-          'proceso': {'id': 1, 'nombre': 'Elecciones 2026', 'faseVigente': 'Sufragio'},
+          'proceso': {
+            'id': 1,
+            'nombre': 'Elecciones 2026',
+            'faseVigente': 'Sufragio',
+          },
           'iglesias': 120,
           'recintos': 10,
           'mesas': 2,
@@ -380,15 +596,33 @@ class TecSimulado {
           'porcentajeEscrutinio': 50,
           'mesasPorEstado': {'CERRADO': 1, 'ABIERTO': 1},
           'alertas': [
-            {'texto': 'Mesas con escrutinio observado', 'cantidad': 1, 'severidad': 'danger'},
-            {'texto': 'Mesas cerradas sin acta física cargada', 'cantidad': 2, 'severidad': 'warn'},
+            {
+              'texto': 'Mesas con escrutinio observado',
+              'cantidad': 1,
+              'severidad': 'danger',
+            },
+            {
+              'texto': 'Mesas cerradas sin acta física cargada',
+              'cantidad': 2,
+              'severidad': 'warn',
+            },
           ],
         });
       case '/tribunal/proceso/mesas':
         return _json(200, [
-          {'ubicacion': ubicacion, 'estado': 'ABIERTO', 'juntaRegistrada': true},
           {
-            'ubicacion': {'mesaId': 8, 'mesa': 'MESA 8', 'recinto': 'Colegio Norte', 'parroquia': 'Lizarzaburu', 'canton': 'Guano'},
+            'ubicacion': ubicacion,
+            'estado': 'ABIERTO',
+            'juntaRegistrada': true,
+          },
+          {
+            'ubicacion': {
+              'mesaId': 8,
+              'mesa': 'MESA 8',
+              'recinto': 'Colegio Norte',
+              'parroquia': 'Lizarzaburu',
+              'canton': 'Guano',
+            },
             'estado': 'CERRADO',
             'juntaRegistrada': true,
           },
@@ -403,8 +637,20 @@ class TecSimulado {
           'votosBlancos': 10,
           'votosNulos': 5,
           'categorias': [
-            {'categoria': 'LISTA 1', 'tipo': 'LISTA', 'lista': 'Lista 1 Unidad', 'votos': 200, 'porcentaje': 69.57},
-            {'categoria': 'LISTA 2', 'tipo': 'LISTA', 'lista': 'Lista 2 Renovación', 'votos': 85, 'porcentaje': 30.43},
+            {
+              'categoria': 'LISTA 1',
+              'tipo': 'LISTA',
+              'lista': 'Lista 1 Unidad',
+              'votos': 200,
+              'porcentaje': 69.57,
+            },
+            {
+              'categoria': 'LISTA 2',
+              'tipo': 'LISTA',
+              'lista': 'Lista 2 Renovación',
+              'votos': 85,
+              'porcentaje': 30.43,
+            },
           ],
           'actualizado': '2026-10-08T18:30:00Z',
         });
@@ -430,30 +676,34 @@ class TecSimulado {
   }
 
   Map<String, dynamic> _perfil(String nombre) => {
-        'usuario': nombre,
-        'nombre': 'Persona $nombre',
-        'roles': usuarios[nombre]!.roles,
-        'iglesiaId': null,
-        'cambioClaveObligatorio': !usuarios[nombre]!.permanente,
-      };
+    'usuario': nombre,
+    'nombre': 'Persona $nombre',
+    'roles': usuarios[nombre]!.roles,
+    'iglesiaId': null,
+    'cambioClaveObligatorio': !usuarios[nombre]!.permanente,
+  };
 
   void _revocarTodo() {
     _accesos.clear();
     _refresh.clear();
   }
 
-  static http.Response _sesionInvalida() =>
-      _error(401, 'SESION_INVALIDA', 'La sesión no es válida o expiró. Inicie sesión nuevamente.');
+  static http.Response _sesionInvalida() => _error(
+    401,
+    'SESION_INVALIDA',
+    'La sesión no es válida o expiró. Inicie sesión nuevamente.',
+  );
 
   static http.Response _error(int estado, String codigo, String mensaje) =>
       _json(estado, {'codigo': codigo, 'mensaje': mensaje});
 
   static http.Response _json(int estado, Object cuerpo) => http.Response.bytes(
-        utf8.encode(jsonEncode(cuerpo)),
-        estado,
-        headers: {'content-type': 'application/json; charset=utf-8'},
-      );
+    utf8.encode(jsonEncode(cuerpo)),
+    estado,
+    headers: {'content-type': 'application/json; charset=utf-8'},
+  );
 }
 
 /// Error esperado de una petición.
-Matcher errorApi(String codigo) => isA<ErrorApi>().having((e) => e.codigo, 'codigo', codigo);
+Matcher errorApi(String codigo) =>
+    isA<ErrorApi>().having((e) => e.codigo, 'codigo', codigo);

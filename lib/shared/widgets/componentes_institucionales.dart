@@ -16,7 +16,11 @@ const LinearGradient degradadoInstitucional = LinearGradient(
 
 /// Centra el contenido y limita su ancho en tablets para no estirar líneas ni tarjetas.
 class ContenidoLimitado extends StatelessWidget {
-  const ContenidoLimitado({super.key, required this.child, this.anchoMaximo = DisenoApp.anchoLectura});
+  const ContenidoLimitado({
+    super.key,
+    required this.child,
+    this.anchoMaximo = DisenoApp.anchoLectura,
+  });
 
   final Widget child;
   final double anchoMaximo;
@@ -25,7 +29,10 @@ class ContenidoLimitado extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topCenter,
-      child: ConstrainedBox(constraints: BoxConstraints(maxWidth: anchoMaximo), child: child),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: anchoMaximo),
+        child: child,
+      ),
     );
   }
 }
@@ -68,7 +75,9 @@ class EncabezadoInstitucional extends StatelessWidget {
             decoration: BoxDecoration(
               color: ColoresTribunal.sobreColor.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(DisenoApp.radioIcono),
-              border: Border.all(color: ColoresTribunal.sobreColor.withValues(alpha: 0.18)),
+              border: Border.all(
+                color: ColoresTribunal.sobreColor.withValues(alpha: 0.18),
+              ),
             ),
             child: Icon(icono, color: ColoresTribunal.sobreColor),
           ),
@@ -199,11 +208,15 @@ class _TarjetaServicioState extends State<TarjetaServicio> {
         scale: _presionada ? 0.98 : 1,
         duration: DisenoApp.rapida,
         child: Material(
-          color: destacada ? ColoresTribunal.primario50 : ColoresTribunal.superficie,
+          color: destacada
+              ? ColoresTribunal.primario50
+              : ColoresTribunal.superficie,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DisenoApp.radio),
             side: BorderSide(
-              color: destacada ? ColoresTribunal.primario : ColoresTribunal.borde,
+              color: destacada
+                  ? ColoresTribunal.primario
+                  : ColoresTribunal.borde,
               width: destacada ? 1.4 : 1,
             ),
           ),
@@ -222,12 +235,16 @@ class _TarjetaServicioState extends State<TarjetaServicio> {
                     width: DisenoApp.minimoTactil,
                     height: DisenoApp.minimoTactil,
                     decoration: BoxDecoration(
-                      color: destacada ? ColoresTribunal.primario : ColoresTribunal.primario100,
+                      color: destacada
+                          ? ColoresTribunal.primario
+                          : ColoresTribunal.primario100,
                       borderRadius: BorderRadius.circular(DisenoApp.radioIcono),
                     ),
                     child: Icon(
                       widget.icono,
-                      color: destacada ? ColoresTribunal.sobreColor : ColoresTribunal.primario800,
+                      color: destacada
+                          ? ColoresTribunal.sobreColor
+                          : ColoresTribunal.primario800,
                     ),
                   ),
                   const SizedBox(width: DisenoApp.md),
@@ -237,10 +254,18 @@ class _TarjetaServicioState extends State<TarjetaServicio> {
                       children: [
                         Text(
                           widget.titulo,
-                          style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, height: 1.25),
+                          style: tema.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            height: 1.25,
+                          ),
                         ),
                         const SizedBox(height: DisenoApp.xs),
-                        Text(widget.descripcion, style: tema.textTheme.bodyMedium?.copyWith(height: 1.4)),
+                        Text(
+                          widget.descripcion,
+                          style: tema.textTheme.bodyMedium?.copyWith(
+                            height: 1.4,
+                          ),
+                        ),
                         if (widget.etiqueta != null) ...[
                           const SizedBox(height: DisenoApp.sm),
                           Text(
@@ -259,7 +284,11 @@ class _TarjetaServicioState extends State<TarjetaServicio> {
                     const ExcludeSemantics(
                       child: Padding(
                         padding: EdgeInsets.only(top: 12),
-                        child: Icon(Icons.arrow_forward_rounded, size: 20, color: ColoresTribunal.primario),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 20,
+                          color: ColoresTribunal.primario,
+                        ),
                       ),
                     ),
                   ],

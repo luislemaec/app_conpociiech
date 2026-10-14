@@ -55,25 +55,45 @@ GoRouter crearRouter(SesionController sesion) {
     routes: [
       // Área pública institucional: Inicio · Organización · Servicios.
       StatefulShellRoute.indexedStack(
-        builder: (context, estado, navegacion) => EstructuraPrincipal(navegacion: navegacion),
+        builder: (context, estado, navegacion) =>
+            EstructuraPrincipal(navegacion: navegacion),
         branches: [
-          StatefulShellBranch(routes: [
-            GoRoute(path: Rutas.inicio, builder: (context, estado) => const PantallaInicio()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: Rutas.organizacion, builder: (context, estado) => const PantallaOrganizacion()),
-          ]),
-          StatefulShellBranch(routes: [
-            GoRoute(path: Rutas.servicios, builder: (context, estado) => const PantallaServicios()),
-          ]),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Rutas.inicio,
+                builder: (context, estado) => const PantallaInicio(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Rutas.organizacion,
+                builder: (context, estado) => const PantallaOrganizacion(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: Rutas.servicios,
+                builder: (context, estado) => const PantallaServicios(),
+              ),
+            ],
+          ),
         ],
       ),
       GoRoute(
         path: Rutas.iniciarSesion,
-        builder: (context, estado) =>
-            PantallaIniciarSesion(destino: estado.uri.queryParameters[Rutas.destino]),
+        builder: (context, estado) => PantallaIniciarSesion(
+          destino: estado.uri.queryParameters[Rutas.destino],
+        ),
       ),
-      GoRoute(path: Rutas.cambiarClave, builder: (context, estado) => const PantallaCambiarClave()),
+      GoRoute(
+        path: Rutas.cambiarClave,
+        builder: (context, estado) => const PantallaCambiarClave(),
+      ),
       GoRoute(
         path: Rutas.tribunal,
         builder: (context, estado) => const PantallaTribunal(),
@@ -82,8 +102,14 @@ GoRouter crearRouter(SesionController sesion) {
             path: 'mesa',
             builder: (context, estado) => const PantallaMiMesa(),
             routes: [
-              GoRoute(path: 'padron', builder: (context, estado) => const PantallaPadronMesa()),
-              GoRoute(path: 'escrutinio', builder: (context, estado) => const PantallaEscrutinio()),
+              GoRoute(
+                path: 'padron',
+                builder: (context, estado) => const PantallaPadronMesa(),
+              ),
+              GoRoute(
+                path: 'escrutinio',
+                builder: (context, estado) => const PantallaEscrutinio(),
+              ),
             ],
           ),
           GoRoute(
@@ -92,8 +118,10 @@ GoRouter crearRouter(SesionController sesion) {
             routes: [
               GoRoute(
                 path: 'miembros',
-                builder: (context, estado) =>
-                    PantallaMiembrosIglesia(soloPendientes: estado.uri.queryParameters['pendientes'] == '1'),
+                builder: (context, estado) => PantallaMiembrosIglesia(
+                  soloPendientes:
+                      estado.uri.queryParameters['pendientes'] == '1',
+                ),
               ),
             ],
           ),
@@ -107,12 +135,18 @@ GoRouter crearRouter(SesionController sesion) {
                 routes: [
                   GoRoute(
                     path: ':mesaId',
-                    builder: (context, estado) =>
-                        PantallaDetalleMesa(mesaId: int.tryParse(estado.pathParameters['mesaId'] ?? '') ?? 0),
+                    builder: (context, estado) => PantallaDetalleMesa(
+                      mesaId:
+                          int.tryParse(estado.pathParameters['mesaId'] ?? '') ??
+                          0,
+                    ),
                   ),
                 ],
               ),
-              GoRoute(path: 'resultados', builder: (context, estado) => const PantallaResultados()),
+              GoRoute(
+                path: 'resultados',
+                builder: (context, estado) => const PantallaResultados(),
+              ),
             ],
           ),
         ],
@@ -129,19 +163,26 @@ String? guardaRutas(SesionController sesion, Uri uri) {
     return ruta == Rutas.cambiarClave ? null : Rutas.cambiarClave;
   }
   if (ruta == Rutas.cambiarClave && !sesion.autenticado) {
-    return Uri(path: Rutas.iniciarSesion, queryParameters: {Rutas.destino: ruta}).toString();
+    return Uri(
+      path: Rutas.iniciarSesion,
+      queryParameters: {Rutas.destino: ruta},
+    ).toString();
   }
   if (ruta == Rutas.iniciarSesion && sesion.autenticado) {
     return destinoSeguro(uri.queryParameters[Rutas.destino], sesion);
   }
   if (ruta == Rutas.tribunal || ruta.startsWith('${Rutas.tribunal}/')) {
     if (!sesion.autenticado) {
-      return Uri(path: Rutas.iniciarSesion, queryParameters: {Rutas.destino: ruta}).toString();
+      return Uri(
+        path: Rutas.iniciarSesion,
+        queryParameters: {Rutas.destino: ruta},
+      ).toString();
     }
     // Autenticado sin un rol del módulo: no se muestra (unión de permisos de sus roles).
     if (!sesion.puedeAccederTribunal) return Rutas.inicio;
     for (final seccion in Rutas.rolesPorSeccion.entries) {
-      if ((ruta == seccion.key || ruta.startsWith('${seccion.key}/')) && !sesion.tieneAlgunRol(seccion.value)) {
+      if ((ruta == seccion.key || ruta.startsWith('${seccion.key}/')) &&
+          !sesion.tieneAlgunRol(seccion.value)) {
         return Rutas.tribunal;
       }
     }

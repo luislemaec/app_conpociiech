@@ -22,7 +22,10 @@ class EstructuraPrincipal extends StatelessWidget {
 
   void _ir(int indice) {
     // Tocar la pestaña actual vuelve a su pantalla inicial.
-    navegacion.goBranch(indice, initialLocation: indice == navegacion.currentIndex);
+    navegacion.goBranch(
+      indice,
+      initialLocation: indice == navegacion.currentIndex,
+    );
   }
 
   @override
@@ -42,7 +45,12 @@ class EstructuraPrincipal extends StatelessWidget {
               children: [
                 const LogoInstitucional(ancho: 34),
                 const SizedBox(width: DisenoApp.sm + DisenoApp.xs),
-                Flexible(child: Text(secciones[indice].$1, overflow: TextOverflow.ellipsis)),
+                Flexible(
+                  child: Text(
+                    secciones[indice].$1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
               ],
             ),
             bottom: const PreferredSize(
@@ -78,7 +86,11 @@ class EstructuraPrincipal extends StatelessWidget {
                   onDestinationSelected: _ir,
                   destinations: [
                     for (final s in secciones)
-                      NavigationDestination(icon: Icon(s.$2), selectedIcon: Icon(s.$3), label: s.$1),
+                      NavigationDestination(
+                        icon: Icon(s.$2),
+                        selectedIcon: Icon(s.$3),
+                        label: s.$1,
+                      ),
                   ],
                 ),
         );
@@ -98,9 +110,13 @@ class _Desvanecer extends StatefulWidget {
   State<_Desvanecer> createState() => _DesvanecerState();
 }
 
-class _DesvanecerState extends State<_Desvanecer> with SingleTickerProviderStateMixin {
-  late final AnimationController _control =
-      AnimationController(vsync: this, duration: DisenoApp.estandar, value: 1);
+class _DesvanecerState extends State<_Desvanecer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _control = AnimationController(
+    vsync: this,
+    duration: DisenoApp.estandar,
+    value: 1,
+  );
 
   @override
   void didUpdateWidget(_Desvanecer anterior) {
@@ -116,5 +132,6 @@ class _DesvanecerState extends State<_Desvanecer> with SingleTickerProviderState
   }
 
   @override
-  Widget build(BuildContext context) => FadeTransition(opacity: _control, child: widget.child);
+  Widget build(BuildContext context) =>
+      FadeTransition(opacity: _control, child: widget.child);
 }

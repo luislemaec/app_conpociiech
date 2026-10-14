@@ -21,9 +21,9 @@ class PantallaInicio extends StatelessWidget {
     final sesion = context.watch<SesionController>();
     var orden = 0;
     Widget bloque(Widget hijo) => EntradaAnimada(
-          retardo: Duration(milliseconds: 70 * orden++),
-          child: hijo,
-        );
+      retardo: Duration(milliseconds: 70 * orden++),
+      child: hijo,
+    );
 
     return ContenidoLimitado(
       child: ListView(
@@ -33,33 +33,40 @@ class PantallaInicio extends StatelessWidget {
           separacionBloque,
           bloque(_Cuenta(sesion: sesion)),
           separacionBloque,
-          bloque(SeccionCard(
-            icono: Icons.how_to_vote_outlined,
-            titulo: 'Proceso electoral 2026',
-            children: [
-              const Text(ContenidoInstitucional.procesoElectoral),
-              const SizedBox(height: DisenoApp.md),
-              OutlinedButton.icon(
-                onPressed: () => context.go(Rutas.servicios),
-                icon: const Icon(Icons.apps_outlined),
-                label: const Text('Ver servicios electorales'),
-              ),
-            ],
-          )),
+          bloque(
+            SeccionCard(
+              icono: Icons.how_to_vote_outlined,
+              titulo: 'Proceso electoral 2026',
+              children: [
+                const Text(ContenidoInstitucional.procesoElectoral),
+                const SizedBox(height: DisenoApp.md),
+                OutlinedButton.icon(
+                  onPressed: () => context.go(Rutas.servicios),
+                  icon: const Icon(Icons.apps_outlined),
+                  label: const Text('Ver servicios electorales'),
+                ),
+              ],
+            ),
+          ),
           separacionBloque,
-          bloque(TarjetaServicio(
-            icono: Icons.account_balance_outlined,
-            titulo: 'Organización',
-            descripcion: 'Quiénes somos, nuestras instituciones y departamentos.',
-            alTocar: () => context.go(Rutas.organizacion),
-          )),
+          bloque(
+            TarjetaServicio(
+              icono: Icons.account_balance_outlined,
+              titulo: 'Organización',
+              descripcion:
+                  'Quiénes somos, nuestras instituciones y departamentos.',
+              alTocar: () => context.go(Rutas.organizacion),
+            ),
+          ),
           const SizedBox(height: DisenoApp.sm),
-          bloque(TarjetaServicio(
-            icono: Icons.apps_outlined,
-            titulo: 'Servicios',
-            descripcion: 'Servicios electorales y gestión de su cuenta.',
-            alTocar: () => context.go(Rutas.servicios),
-          )),
+          bloque(
+            TarjetaServicio(
+              icono: Icons.apps_outlined,
+              titulo: 'Servicios',
+              descripcion: 'Servicios electorales y gestión de su cuenta.',
+              alTocar: () => context.go(Rutas.servicios),
+            ),
+          ),
           const SizedBox(height: DisenoApp.lg),
         ],
       ),
@@ -81,20 +88,36 @@ class _Identidad extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(DisenoApp.lg, DisenoApp.lg, DisenoApp.lg, DisenoApp.md),
+            padding: const EdgeInsets.fromLTRB(
+              DisenoApp.lg,
+              DisenoApp.lg,
+              DisenoApp.lg,
+              DisenoApp.md,
+            ),
             child: Column(
               children: [
                 const LogoInstitucional(ancho: 170),
                 const SizedBox(height: DisenoApp.md),
-                Text(ContenidoInstitucional.sigla, textAlign: TextAlign.center, style: texto.headlineSmall),
+                Text(
+                  ContenidoInstitucional.sigla,
+                  textAlign: TextAlign.center,
+                  style: texto.headlineSmall,
+                ),
                 const SizedBox(height: DisenoApp.xs),
-                Text(ContenidoInstitucional.subtitulo, textAlign: TextAlign.center, style: texto.titleMedium),
+                Text(
+                  ContenidoInstitucional.subtitulo,
+                  textAlign: TextAlign.center,
+                  style: texto.titleMedium,
+                ),
               ],
             ),
           ),
           Container(
             decoration: const BoxDecoration(gradient: degradadoInstitucional),
-            padding: const EdgeInsets.symmetric(horizontal: DisenoApp.md, vertical: DisenoApp.sm + DisenoApp.xs),
+            padding: const EdgeInsets.symmetric(
+              horizontal: DisenoApp.md,
+              vertical: DisenoApp.sm + DisenoApp.xs,
+            ),
             child: Text(
               ContenidoInstitucional.lema,
               textAlign: TextAlign.center,

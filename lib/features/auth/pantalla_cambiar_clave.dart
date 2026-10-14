@@ -17,7 +17,8 @@ abstract final class PoliticaClave {
     'Sin espacios': (v) => v.isNotEmpty && !RegExp(r'\s').hasMatch(v),
   };
 
-  static bool cumple(String clave) => requisitos.values.every((regla) => regla(clave));
+  static bool cumple(String clave) =>
+      requisitos.values.every((regla) => regla(clave));
 }
 
 /// Cambio de clave. Es obligatorio para un usuario no permanente (no puede usar otra
@@ -73,7 +74,11 @@ class _PantallaCambiarClaveState extends State<PantallaCambiarClave> {
     setState(() => _enviando = false);
     mensajes
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(error ?? 'Su contraseña se actualizó correctamente.')));
+      ..showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Su contraseña se actualizó correctamente.'),
+        ),
+      );
     if (error == null) context.go(destinoSeguro(null, sesion));
   }
 
@@ -87,19 +92,21 @@ class _PantallaCambiarClaveState extends State<PantallaCambiarClave> {
   }
 
   InputDecoration _decoracion(String etiqueta) => InputDecoration(
-        labelText: etiqueta,
-        prefixIcon: const Icon(Icons.lock_outline),
-        suffixIcon: IconButton(
-          icon: Icon(_visibles ? Icons.visibility_off : Icons.visibility),
-          tooltip: _visibles ? 'Ocultar contraseñas' : 'Mostrar contraseñas',
-          onPressed: () => setState(() => _visibles = !_visibles),
-        ),
-      );
+    labelText: etiqueta,
+    prefixIcon: const Icon(Icons.lock_outline),
+    suffixIcon: IconButton(
+      icon: Icon(_visibles ? Icons.visibility_off : Icons.visibility),
+      tooltip: _visibles ? 'Ocultar contraseñas' : 'Mostrar contraseñas',
+      onPressed: () => setState(() => _visibles = !_visibles),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context);
-    final obligatorio = context.select<SesionController, bool>((s) => s.cambioClaveObligatorio);
+    final obligatorio = context.select<SesionController, bool>(
+      (s) => s.cambioClaveObligatorio,
+    );
     final nueva = _nueva.text;
 
     return Scaffold(
@@ -141,7 +148,9 @@ class _PantallaCambiarClaveState extends State<PantallaCambiarClave> {
                       autofillHints: const [AutofillHints.password],
                       textInputAction: TextInputAction.next,
                       decoration: _decoracion('Contraseña actual'),
-                      validator: (v) => (v == null || v.isEmpty) ? 'Ingrese su contraseña actual.' : null,
+                      validator: (v) => (v == null || v.isEmpty)
+                          ? 'Ingrese su contraseña actual.'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -154,9 +163,12 @@ class _PantallaCambiarClaveState extends State<PantallaCambiarClave> {
                       textInputAction: TextInputAction.next,
                       decoration: _decoracion('Nueva contraseña'),
                       validator: (v) {
-                        if (v == null || v.isEmpty) return 'Ingrese la nueva contraseña.';
-                        if (!PoliticaClave.cumple(v)) return 'La contraseña no cumple los requisitos.';
-                        if (v == _actual.text) return 'La nueva contraseña debe ser distinta de la actual.';
+                        if (v == null || v.isEmpty)
+                          return 'Ingrese la nueva contraseña.';
+                        if (!PoliticaClave.cumple(v))
+                          return 'La contraseña no cumple los requisitos.';
+                        if (v == _actual.text)
+                          return 'La nueva contraseña debe ser distinta de la actual.';
                         return null;
                       },
                     ),
@@ -170,26 +182,44 @@ class _PantallaCambiarClaveState extends State<PantallaCambiarClave> {
                       textInputAction: TextInputAction.done,
                       decoration: _decoracion('Confirmar nueva contraseña'),
                       onFieldSubmitted: (_) => _guardar(),
-                      validator: (v) => v != _nueva.text ? 'Las contraseñas no coinciden.' : null,
+                      validator: (v) => v != _nueva.text
+                          ? 'Las contraseñas no coinciden.'
+                          : null,
                     ),
                     const SizedBox(height: 16),
-                    Text('La contraseña debe tener:', style: tema.textTheme.labelLarge),
+                    Text(
+                      'La contraseña debe tener:',
+                      style: tema.textTheme.labelLarge,
+                    ),
                     const SizedBox(height: 8),
                     for (final requisito in PoliticaClave.requisitos.entries)
-                      _Requisito(texto: requisito.key, cumplido: requisito.value(nueva)),
+                      _Requisito(
+                        texto: requisito.key,
+                        cumplido: requisito.value(nueva),
+                      ),
                     const SizedBox(height: 4),
-                    Text('Los símbolos son opcionales.', style: tema.textTheme.bodySmall),
+                    Text(
+                      'Los símbolos son opcionales.',
+                      style: tema.textTheme.bodySmall,
+                    ),
                     const SizedBox(height: 24),
                     FilledButton(
                       onPressed: _enviando ? null : _guardar,
                       child: _enviando
-                          ? const SizedBox.square(dimension: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox.square(
+                              dimension: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : const Text('Guardar contraseña'),
                     ),
                     const SizedBox(height: 12),
                     TextButton(
-                      onPressed: _enviando ? null : () => _cancelar(obligatorio),
-                      child: Text(obligatorio ? 'Cancelar y cerrar sesión' : 'Cancelar'),
+                      onPressed: _enviando
+                          ? null
+                          : () => _cancelar(obligatorio),
+                      child: Text(
+                        obligatorio ? 'Cancelar y cerrar sesión' : 'Cancelar',
+                      ),
                     ),
                   ],
                 ),
@@ -222,7 +252,9 @@ class _Requisito extends StatelessWidget {
             semanticLabel: cumplido ? 'Cumplido' : 'Pendiente',
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(texto, style: Theme.of(context).textTheme.bodyMedium)),
+          Expanded(
+            child: Text(texto, style: Theme.of(context).textTheme.bodyMedium),
+          ),
         ],
       ),
     );

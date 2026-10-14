@@ -24,7 +24,8 @@ class EntradaAnimada extends StatefulWidget {
   State<EntradaAnimada> createState() => _EntradaAnimadaState();
 }
 
-class _EntradaAnimadaState extends State<EntradaAnimada> with SingleTickerProviderStateMixin {
+class _EntradaAnimadaState extends State<EntradaAnimada>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _control;
   late final Animation<double> _opacidad;
   late final Animation<Offset> _desplazamiento;
@@ -33,11 +34,19 @@ class _EntradaAnimadaState extends State<EntradaAnimada> with SingleTickerProvid
   void initState() {
     super.initState();
     final total = widget.retardo + widget.duracion;
-    final inicio = total.inMicroseconds == 0 ? 0.0 : widget.retardo.inMicroseconds / total.inMicroseconds;
+    final inicio = total.inMicroseconds == 0
+        ? 0.0
+        : widget.retardo.inMicroseconds / total.inMicroseconds;
     _control = AnimationController(vsync: this, duration: total);
-    final curva = CurvedAnimation(parent: _control, curve: Interval(inicio, 1, curve: Curves.easeOutCubic));
+    final curva = CurvedAnimation(
+      parent: _control,
+      curve: Interval(inicio, 1, curve: Curves.easeOutCubic),
+    );
     _opacidad = curva;
-    _desplazamiento = Tween(begin: const Offset(0, 0.04), end: Offset.zero).animate(curva);
+    _desplazamiento = Tween(
+      begin: const Offset(0, 0.04),
+      end: Offset.zero,
+    ).animate(curva);
   }
 
   @override

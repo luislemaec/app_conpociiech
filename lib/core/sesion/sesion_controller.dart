@@ -19,7 +19,7 @@ class SesionController extends ChangeNotifier {
     required this._almacen,
     DateTime Function()? reloj,
     this.dispositivo,
-  })  : _reloj = reloj ?? DateTime.now;
+  }) : _reloj = reloj ?? DateTime.now;
 
   /// Igual que el session-timeout de la web.
   static const Duration inactividad = Duration(minutes: 15);
@@ -30,8 +30,10 @@ class SesionController extends ChangeNotifier {
   /// Margen para renovar el token de acceso antes de que venza.
   static const Duration margenAcceso = Duration(seconds: 30);
 
-  static const String avisoInactividad = 'Su sesión se cerró por inactividad. Inicie sesión nuevamente.';
-  static const String avisoExpirada = 'Su sesión expiró. Inicie sesión nuevamente.';
+  static const String avisoInactividad =
+      'Su sesión se cerró por inactividad. Inicie sesión nuevamente.';
+  static const String avisoExpirada =
+      'Su sesión expiró. Inicie sesión nuevamente.';
 
   final ApiAutenticacion _api;
   final AlmacenTokens _almacen;
@@ -56,10 +58,14 @@ class SesionController extends ChangeNotifier {
 
   bool get cambioClaveObligatorio => _sesion?.cambioClaveObligatorio ?? false;
 
-  bool tieneAlgunRol(Iterable<String> requeridos) => requeridos.any(roles.contains);
+  bool tieneAlgunRol(Iterable<String> requeridos) =>
+      requeridos.any(roles.contains);
 
   /// Unión de permisos: basta con uno de los roles del módulo.
-  bool get puedeAccederTribunal => autenticado && !cambioClaveObligatorio && tieneAlgunRol(RolTec.moduloTribunal);
+  bool get puedeAccederTribunal =>
+      autenticado &&
+      !cambioClaveObligatorio &&
+      tieneAlgunRol(RolTec.moduloTribunal);
 
   /// Motivo del último cierre automático; se muestra una sola vez.
   String? consumirAviso() {
@@ -85,12 +91,16 @@ class SesionController extends ChangeNotifier {
   /// Lanza [ErrorApi] (credenciales, límite de intentos…) o [SinConexion].
   Future<void> iniciarSesion(String usuario, String clave) async {
     _aviso = null;
-    await _establecer(await _api.iniciarSesion(usuario.trim(), clave, dispositivo: dispositivo));
+    await _establecer(
+      await _api.iniciarSesion(usuario.trim(), clave, dispositivo: dispositivo),
+    );
   }
 
   /// Cambia la clave con la sesión vigente; TEC entrega una sesión completa nueva.
   Future<void> cambiarClave(String claveActual, String claveNueva) async {
-    final nueva = await autenticada((token) => _api.cambiarClave(token, claveActual, claveNueva));
+    final nueva = await autenticada(
+      (token) => _api.cambiarClave(token, claveActual, claveNueva),
+    );
     await _establecer(nueva);
   }
 
@@ -99,7 +109,8 @@ class SesionController extends ChangeNotifier {
 
   /// Registra una acción que necesita la sesión vigente justo antes de que el usuario la
   /// cierre. No se ejecuta en los cierres automáticos (la sesión ya no es válida en TEC).
-  void alCerrarSesion(Future<void> Function() accion) => _accionesAlCerrar.add(accion);
+  void alCerrarSesion(Future<void> Function() accion) =>
+      _accionesAlCerrar.add(accion);
 
   Future<void> cerrar() async {
     final sesion = _sesion;
@@ -125,11 +136,16 @@ class SesionController extends ChangeNotifier {
 
   /// Ejecuta una petición protegida: renueva el token si venció y reintenta una vez ante
   /// un 401. Si la sesión ya no es válida, la cierra y propaga el error.
-  Future<T> autenticada<T>(Future<T> Function(String accessToken) peticion) async {
-    if (_verificarInactividad()) throw const ErrorApi(401, 'SESION_INVALIDA', avisoInactividad);
+  Future<T> autenticada<T>(
+    Future<T> Function(String accessToken) peticion,
+  ) async {
+    if (_verificarInactividad())
+      throw const ErrorApi(401, 'SESION_INVALIDA', avisoInactividad);
     final sesion = _sesion;
-    if (sesion == null) throw const ErrorApi(401, 'SESION_INVALIDA', avisoExpirada);
-    if (!_reloj().isBefore(sesion.accesoExpiraEn.subtract(margenAcceso)) && !await _renovar()) {
+    if (sesion == null)
+      throw const ErrorApi(401, 'SESION_INVALIDA', avisoExpirada);
+    if (!_reloj().isBefore(sesion.accesoExpiraEn.subtract(margenAcceso)) &&
+        !await _renovar()) {
       throw const ErrorApi(401, 'SESION_INVALIDA', avisoExpirada);
     }
     try {
@@ -146,17 +162,20 @@ class SesionController extends ChangeNotifier {
     if (!autenticado || _verificarInactividad()) return;
     final ahora = _reloj();
     _ultimaActividad = ahora;
-    if (ahora.difference(_ultimoContacto) >= mantenerViva) unawaited(_renovar());
+    if (ahora.difference(_ultimoContacto) >= mantenerViva)
+      unawaited(_renovar());
   }
 
   bool _verificarInactividad() {
-    if (!autenticado || _reloj().difference(_ultimaActividad) < inactividad) return false;
+    if (!autenticado || _reloj().difference(_ultimaActividad) < inactividad)
+      return false;
     _expirar(avisoInactividad);
     return true;
   }
 
   /// Una sola renovación a la vez: el refresh rota y presentarlo dos veces revocaría la sesión.
-  Future<bool> _renovar() => _renovacion ??= _renovarUnaVez().whenComplete(() => _renovacion = null);
+  Future<bool> _renovar() =>
+      _renovacion ??= _renovarUnaVez().whenComplete(() => _renovacion = null);
 
   Future<bool> _renovarUnaVez() async {
     final sesion = _sesion;
