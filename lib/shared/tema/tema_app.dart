@@ -38,26 +38,93 @@ abstract final class TemaApp {
 
     // Escala tipográfica única (tamaños lógicos; el sistema los escala según la
     // accesibilidad del dispositivo). Mínimo 13 para texto operativo, sin pesos finos.
-    TextStyle? estilo(TextStyle? b, double tamano, FontWeight peso, Color color, {double? alto}) =>
-        b?.copyWith(fontSize: tamano, fontWeight: peso, color: color, height: alto);
+    TextStyle? estilo(
+      TextStyle? b,
+      double tamano,
+      FontWeight peso,
+      Color color, {
+      double? alto,
+    }) => b?.copyWith(
+      fontSize: tamano,
+      fontWeight: peso,
+      color: color,
+      height: alto,
+    );
     final t = base.textTheme;
     final textos = t.copyWith(
       // Título principal de pantalla.
-      headlineSmall: estilo(t.headlineSmall, 24, FontWeight.w700, ColoresTribunal.azulInstitucional, alto: 1.25),
+      headlineSmall: estilo(
+        t.headlineSmall,
+        24,
+        FontWeight.w700,
+        ColoresTribunal.azulInstitucional,
+        alto: 1.25,
+      ),
       // Título de sección / encabezado.
-      titleLarge: estilo(t.titleLarge, 20, FontWeight.w700, ColoresTribunal.textoFuerte, alto: 1.3),
+      titleLarge: estilo(
+        t.titleLarge,
+        20,
+        FontWeight.w700,
+        ColoresTribunal.textoFuerte,
+        alto: 1.3,
+      ),
       // Título de tarjeta, nombre en listas.
-      titleMedium: estilo(t.titleMedium, 16, FontWeight.w500, ColoresTribunal.textoFuerte, alto: 1.35),
-      titleSmall: estilo(t.titleSmall, 15, FontWeight.w500, ColoresTribunal.textoFuerte, alto: 1.35),
+      titleMedium: estilo(
+        t.titleMedium,
+        16,
+        FontWeight.w500,
+        ColoresTribunal.textoFuerte,
+        alto: 1.35,
+      ),
+      titleSmall: estilo(
+        t.titleSmall,
+        15,
+        FontWeight.w500,
+        ColoresTribunal.textoFuerte,
+        alto: 1.35,
+      ),
       // Cuerpo.
-      bodyLarge: estilo(t.bodyLarge, 16, FontWeight.w400, ColoresTribunal.texto, alto: 1.5),
-      bodyMedium: estilo(t.bodyMedium, 15, FontWeight.w400, ColoresTribunal.texto, alto: 1.45),
+      bodyLarge: estilo(
+        t.bodyLarge,
+        16,
+        FontWeight.w400,
+        ColoresTribunal.texto,
+        alto: 1.5,
+      ),
+      bodyMedium: estilo(
+        t.bodyMedium,
+        15,
+        FontWeight.w400,
+        ColoresTribunal.texto,
+        alto: 1.45,
+      ),
       // Secundario / caption: nunca menos de 13.
-      bodySmall: estilo(t.bodySmall, 13, FontWeight.w400, ColoresTribunal.textoSecundario, alto: 1.4),
+      bodySmall: estilo(
+        t.bodySmall,
+        13,
+        FontWeight.w400,
+        ColoresTribunal.textoSecundario,
+        alto: 1.4,
+      ),
       // Botones y etiquetas.
-      labelLarge: estilo(t.labelLarge, 15, FontWeight.w500, ColoresTribunal.textoFuerte),
-      labelMedium: estilo(t.labelMedium, 13, FontWeight.w500, ColoresTribunal.texto),
-      labelSmall: estilo(t.labelSmall, 13, FontWeight.w500, ColoresTribunal.textoSecundario),
+      labelLarge: estilo(
+        t.labelLarge,
+        15,
+        FontWeight.w500,
+        ColoresTribunal.textoFuerte,
+      ),
+      labelMedium: estilo(
+        t.labelMedium,
+        13,
+        FontWeight.w500,
+        ColoresTribunal.texto,
+      ),
+      labelSmall: estilo(
+        t.labelSmall,
+        13,
+        FontWeight.w500,
+        ColoresTribunal.textoSecundario,
+      ),
     );
 
     return base.copyWith(
@@ -66,14 +133,20 @@ abstract final class TemaApp {
       chipTheme: ChipThemeData(
         labelStyle: textos.labelMedium,
         side: const BorderSide(color: ColoresTribunal.borde),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(DisenoApp.radioCampo)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(DisenoApp.radioCampo),
+        ),
       ),
       listTileTheme: ListTileThemeData(
         titleTextStyle: textos.titleMedium,
         subtitleTextStyle: textos.bodySmall,
         minVerticalPadding: DisenoApp.sm + DisenoApp.xs,
       ),
-      dividerTheme: const DividerThemeData(color: ColoresTribunal.borde, space: 1, thickness: 1),
+      dividerTheme: const DividerThemeData(
+        color: ColoresTribunal.borde,
+        space: 1,
+        thickness: 1,
+      ),
       appBarTheme: const AppBarTheme(
         backgroundColor: ColoresTribunal.superficie,
         foregroundColor: ColoresTribunal.azulInstitucional,

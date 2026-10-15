@@ -124,7 +124,9 @@ class _PantallaIniciarSesionState extends State<PantallaIniciarSesion> {
                             tono: entorno.esProduccion
                                 ? TonoSemantico.informacion
                                 : TonoSemantico.advertencia,
-                            icono: entorno.esProduccion ? Icons.public : Icons.developer_mode,
+                            icono: entorno.esProduccion
+                                ? Icons.public
+                                : Icons.developer_mode,
                           ),
                         ),
                       ],

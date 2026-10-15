@@ -15,7 +15,11 @@ enum Ambiente {
     for (final a in values) {
       if (a.clave == normalizada) return a;
     }
-    throw ArgumentError.value(clave, 'AMBIENTE', 'debe ser DESARROLLO o PRODUCCION');
+    throw ArgumentError.value(
+      clave,
+      'AMBIENTE',
+      'debe ser DESARROLLO o PRODUCCION',
+    );
   }
 }
 
@@ -71,7 +75,11 @@ class Entorno {
       );
     }
     final ca = caDesarrollo?.trim();
-    final usarCa = !release && ambiente == Ambiente.desarrollo && ca != null && ca.isNotEmpty;
+    final usarCa =
+        !release &&
+        ambiente == Ambiente.desarrollo &&
+        ca != null &&
+        ca.isNotEmpty;
     return Entorno._(ambiente, uri, usarCa ? ca : null);
   }
 

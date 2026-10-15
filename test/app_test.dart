@@ -242,25 +242,35 @@ void main() {
       expect(() => Entorno.desdeUrl('/api/v1'), throwsArgumentError);
     });
 
-    test('la CA de desarrollo solo se usa en DESARROLLO y fuera de release', () {
-      const ca =
-          '  -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----  ';
-      Entorno desarrollo({String? conCa = ca, bool release = false}) => Entorno.desdeUrl(
-        'https://10.10.8.14/api/v1',
-        ambiente: Ambiente.desarrollo,
-        caDesarrollo: conCa,
-        release: release,
-      );
-      expect(desarrollo(release: true).caDesarrollo, isNull);
-      expect(desarrollo().caDesarrollo, startsWith('-----BEGIN CERTIFICATE-----'));
-      expect(desarrollo(conCa: ' ').caDesarrollo, isNull);
-      // Producción nunca confía en una CA local, aunque se pase por error.
-      expect(
-        Entorno.desdeUrl('https://tribunal.conpociiech.org/api/v1', caDesarrollo: ca, release: false)
-            .caDesarrollo,
-        isNull,
-      );
-    });
+    test(
+      'la CA de desarrollo solo se usa en DESARROLLO y fuera de release',
+      () {
+        const ca =
+            '  -----BEGIN CERTIFICATE-----\nAAA\n-----END CERTIFICATE-----  ';
+        Entorno desarrollo({String? conCa = ca, bool release = false}) =>
+            Entorno.desdeUrl(
+              'https://10.10.8.14/api/v1',
+              ambiente: Ambiente.desarrollo,
+              caDesarrollo: conCa,
+              release: release,
+            );
+        expect(desarrollo(release: true).caDesarrollo, isNull);
+        expect(
+          desarrollo().caDesarrollo,
+          startsWith('-----BEGIN CERTIFICATE-----'),
+        );
+        expect(desarrollo(conCa: ' ').caDesarrollo, isNull);
+        // Producción nunca confía en una CA local, aunque se pase por error.
+        expect(
+          Entorno.desdeUrl(
+            'https://tribunal.conpociiech.org/api/v1',
+            caDesarrollo: ca,
+            release: false,
+          ).caDesarrollo,
+          isNull,
+        );
+      },
+    );
 
     test('el ambiente es explícito y por defecto producción', () {
       final produccion = Entorno.desdeUrl(Entorno.urlPorDefecto);
@@ -287,10 +297,16 @@ void main() {
       final lineas = pem.trim().split('\n');
       expect(lineas.first, '-----BEGIN CERTIFICATE-----');
       expect(lineas.last, '-----END CERTIFICATE-----');
-      expect(lineas.sublist(1, lineas.length - 1).map((l) => l.length), [64, 64, 2]);
+      expect(lineas.sublist(1, lineas.length - 1).map((l) => l.length), [
+        64,
+        64,
+        2,
+      ]);
       // Un PEM completo se respeta (también con «\n» literales).
       expect(
-        pemDesdeDefinicion(r'-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----'),
+        pemDesdeDefinicion(
+          r'-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
+        ),
         '-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----',
       );
     });

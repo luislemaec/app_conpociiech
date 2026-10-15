@@ -7,7 +7,7 @@ petición.
 
 | Dato | Valor |
 | --- | --- |
-| Paquete Android / bundle iOS | `ec.org.conpociiech.app` |
+| Paquete Android / bundle iOS | `org.conpociiech.app` |
 | Versión | `pubspec.yaml` → `version: 1.0.0+1` (`versionName+versionCode`) |
 | Plataformas | Android (minSdk de Flutter, 24+) e iOS |
 | Flutter / Dart | 3.44 estable / 3.12 |

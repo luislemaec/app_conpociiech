@@ -30,7 +30,8 @@ class ParSemantico {
   final Color primerPlano;
   final Color fondo;
 
-  static ParSemantico lerp(ParSemantico a, ParSemantico b, double t) => ParSemantico(
+  static ParSemantico lerp(ParSemantico a, ParSemantico b, double t) =>
+      ParSemantico(
         Color.lerp(a.primerPlano, b.primerPlano, t)!,
         Color.lerp(a.fondo, b.fondo, t)!,
       );
@@ -55,25 +56,39 @@ class ColoresSemanticos extends ThemeExtension<ColoresSemanticos> {
   final ParSemantico neutro;
 
   /// Fondo suave: el color del estado a baja opacidad sobre la superficie.
-  static Color _suave(Color color) =>
-      Color.alphaBlend(color.withValues(alpha: 0.12), ColoresTribunal.superficie);
+  static Color _suave(Color color) => Color.alphaBlend(
+    color.withValues(alpha: 0.12),
+    ColoresTribunal.superficie,
+  );
 
   static final ColoresSemanticos claro = ColoresSemanticos(
     exito: ParSemantico(ColoresTribunal.exito, _suave(ColoresTribunal.exito)),
-    informacion: ParSemantico(ColoresTribunal.informacion, _suave(ColoresTribunal.informacion)),
+    informacion: ParSemantico(
+      ColoresTribunal.informacion,
+      _suave(ColoresTribunal.informacion),
+    ),
     // El amarillo no se lee sobre fondo claro: el texto usa su tono oscuro.
-    advertencia: ParSemantico(ColoresTribunal.textoAdvertencia, _suave(ColoresTribunal.advertencia)),
-    peligro: ParSemantico(ColoresTribunal.peligro, _suave(ColoresTribunal.peligro)),
-    neutro: ParSemantico(ColoresTribunal.secundario, ColoresTribunal.superficie100),
+    advertencia: ParSemantico(
+      ColoresTribunal.textoAdvertencia,
+      _suave(ColoresTribunal.advertencia),
+    ),
+    peligro: ParSemantico(
+      ColoresTribunal.peligro,
+      _suave(ColoresTribunal.peligro),
+    ),
+    neutro: ParSemantico(
+      ColoresTribunal.secundario,
+      ColoresTribunal.superficie100,
+    ),
   );
 
   ParSemantico de(TonoSemantico tono) => switch (tono) {
-        TonoSemantico.exito => exito,
-        TonoSemantico.informacion => informacion,
-        TonoSemantico.advertencia => advertencia,
-        TonoSemantico.peligro => peligro,
-        TonoSemantico.neutro => neutro,
-      };
+    TonoSemantico.exito => exito,
+    TonoSemantico.informacion => informacion,
+    TonoSemantico.advertencia => advertencia,
+    TonoSemantico.peligro => peligro,
+    TonoSemantico.neutro => neutro,
+  };
 
   @override
   ColoresSemanticos copyWith({
@@ -82,14 +97,13 @@ class ColoresSemanticos extends ThemeExtension<ColoresSemanticos> {
     ParSemantico? advertencia,
     ParSemantico? peligro,
     ParSemantico? neutro,
-  }) =>
-      ColoresSemanticos(
-        exito: exito ?? this.exito,
-        informacion: informacion ?? this.informacion,
-        advertencia: advertencia ?? this.advertencia,
-        peligro: peligro ?? this.peligro,
-        neutro: neutro ?? this.neutro,
-      );
+  }) => ColoresSemanticos(
+    exito: exito ?? this.exito,
+    informacion: informacion ?? this.informacion,
+    advertencia: advertencia ?? this.advertencia,
+    peligro: peligro ?? this.peligro,
+    neutro: neutro ?? this.neutro,
+  );
 
   @override
   ColoresSemanticos lerp(ThemeExtension<ColoresSemanticos>? other, double t) {

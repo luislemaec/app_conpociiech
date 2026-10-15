@@ -37,6 +37,9 @@ abstract final class Rutas {
   /// Datos de la persona de un miembro de la iglesia (IglesiaAdmin).
   static String editarMiembro(int miembroId) => '$miembrosIglesia/$miembroId';
 
+  /// Agregar una persona a la iglesia (IglesiaAdmin).
+  static const String nuevoMiembro = '$miembrosIglesia/nuevo';
+
   /// Detalle de una mesa del proceso (Administrador, Tribunal).
   static String detalleMesa(int mesaId) => '/tribunal/proceso/mesas/$mesaId';
 
@@ -128,11 +131,19 @@ GoRouter crearRouter(SesionController sesion) {
                 ),
                 routes: [
                   // Misma guarda de la sección Iglesia (prefijo /tribunal/iglesia).
+                  // «nuevo» va antes que ':miembroId' para que no se lea como un id.
+                  GoRoute(
+                    path: 'nuevo',
+                    builder: (context, estado) => const PantallaNuevoMiembro(),
+                  ),
                   GoRoute(
                     path: ':miembroId',
                     builder: (context, estado) => PantallaEditarMiembro(
                       miembroId:
-                          int.tryParse(estado.pathParameters['miembroId'] ?? '') ?? 0,
+                          int.tryParse(
+                            estado.pathParameters['miembroId'] ?? '',
+                          ) ??
+                          0,
                     ),
                   ),
                 ],

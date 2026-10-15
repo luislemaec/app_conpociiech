@@ -593,6 +593,183 @@ void main() {
     });
   });
 
+  group('Agregar y dar de baja', () {
+    /// Pantalla alta: formulario completo, incluida la zona de baja.
+    Future<void> abrirMiembros(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(800, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await montar(tester, 'iglesia');
+      await ir(tester, Rutas.miembrosIglesia);
+    }
+
+    Finder campo(String etiqueta) =>
+        find.widgetWithText(TextFormField, etiqueta);
+    Finder botonAgregar() =>
+        find.widgetWithText(FilledButton, 'Agregar persona');
+
+    Future<void> tocar(WidgetTester tester, Finder boton) async {
+      await tester.ensureVisible(boton);
+      await tester.pumpAndSettle();
+      await tester.tap(boton);
+      await tester.pumpAndSettle();
+      await esperar(tester);
+    }
+
+    testWidgets(
+      'agrega una persona habilitada por defecto y recarga la lista',
+      (tester) async {
+        await abrirMiembros(tester);
+        expect(find.text('45 miembros'), findsOneWidget);
+        await tocar(tester, botonAgregar());
+        expect(find.text('Agregar persona'), findsWidgets);
+        // Formulario vacío, sin «Dar de baja», habilitación activa por defecto.
+        expect(find.text('Dar de baja'), findsNothing);
+        expect(
+          tester
+              .widget<SwitchListTile>(
+                find.widgetWithText(SwitchListTile, 'Habilitar para padrón'),
+              )
+              .value,
+          isTrue,
+        );
+        await tester.enterText(
+          campo('Apellidos y nombres'),
+          'NUEVA PERSONA ANA',
+        );
+        await tester.enterText(campo('Cédula'), '1710034065');
+        await tester.tap(find.text('Femenino'));
+        await tester.pumpAndSettle();
+        await tocar(tester, botonAgregar());
+
+        expect(tec.altas, hasLength(1));
+        expect(tec.cuerpos.last, {
+          'nombres': 'NUEVA PERSONA ANA',
+          'documento': '1710034065',
+          'sexo': 'F',
+          'habilitado': true,
+        });
+        expect(find.text('Persona agregada a la iglesia.'), findsOneWidget);
+        expect(find.text('46 miembros'), findsOneWidget);
+      },
+    );
+
+    testWidgets('muestra el mensaje de TEC si la persona es de otra iglesia', (
+      tester,
+    ) async {
+      await abrirMiembros(tester);
+      await tocar(tester, botonAgregar());
+      await tester.enterText(campo('Apellidos y nombres'), 'OTRA PERSONA');
+      await tester.enterText(campo('Cédula'), TecSimulado.cedulaEnOtraIglesia);
+      await tocar(tester, botonAgregar());
+      expect(
+        find.text(
+          'La persona ya es miembro activo de la iglesia Iglesia Norte.',
+        ),
+        findsOneWidget,
+      );
+      expect(tec.altas, isEmpty);
+      expect(
+        find.text('OTRA PERSONA'),
+        findsOneWidget,
+        reason: 'conserva lo escrito',
+      );
+    });
+
+    testWidgets('con el cronograma cerrado no se puede agregar', (
+      tester,
+    ) async {
+      tec.edicionAbierta = false;
+      await abrirMiembros(tester);
+      expect(tester.widget<FilledButton>(botonAgregar()).onPressed, isNull);
+      expect(
+        find.byTooltip('El cronograma no permite editar el padrón.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('dar de baja pide confirmación y quita la fila', (
+      tester,
+    ) async {
+      await abrirMiembros(tester);
+      await tocarLapiz(tester, 'Miembro 04');
+      final baja = find.widgetWithText(OutlinedButton, 'Dar de baja');
+      await tocar(tester, baja);
+      expect(find.byType(AlertDialog), findsOneWidget);
+      expect(
+        find.textContaining('El registro será dado de baja'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('dejará de aparecer en el padrón'),
+        findsOneWidget,
+      );
+
+      // Cancelar no cambia nada.
+      await tester.tap(find.text('Cancelar'));
+      await tester.pumpAndSettle();
+      expect(tec.bajas, isEmpty);
+
+      await tocar(tester, baja);
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, 'Dar de baja'),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await esperar(tester);
+      expect(tec.bajas, [4]);
+      expect(find.text('Miembro 04 fue dado de baja.'), findsOneWidget);
+      expect(find.byTooltip('Editar datos de Miembro 04'), findsNothing);
+      expect(find.text('44 miembros'), findsOneWidget);
+      // La fila sigue teniendo solo el lápiz: la baja vive en «Datos de la persona».
+      expect(find.byIcon(Icons.delete_outline), findsNothing);
+    });
+
+    testWidgets('con el cronograma cerrado no se da de baja', (tester) async {
+      tec.edicionAbierta = false;
+      await abrirMiembros(tester);
+      await tocarLapiz(tester, 'Miembro 04');
+      final baja = find.widgetWithText(OutlinedButton, 'Dar de baja');
+      await tester.ensureVisible(baja);
+      expect(tester.widget<OutlinedButton>(baja).onPressed, isNull);
+    });
+
+    test('solo el IglesiaAdmin puede agregar o dar de baja', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('tribunal', 'Clave123');
+      final api = ApiTribunal(tec.api, sesion);
+      await expectLater(
+        api.crearMiembro(
+          nombres: 'X',
+          documento: '1710034065',
+          habilitado: true,
+        ),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
+      await expectLater(
+        api.darDeBajaMiembro(4),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
+      expect(tec.altas, isEmpty);
+      expect(tec.bajas, isEmpty);
+    });
+
+    test('un miembro de otra iglesia no se da de baja', () async {
+      final sesion = tec.crearSesion();
+      await sesion.iniciarSesion('iglesia', 'Clave123');
+      await expectLater(
+        ApiTribunal(
+          tec.api,
+          sesion,
+        ).darDeBajaMiembro(TecSimulado.miembroDeOtraIglesia),
+        throwsA(errorApi('SIN_PERMISO')),
+      );
+    });
+  });
+
   group('Tribunal / Administrador', () {
     testWidgets('resumen del proceso', (tester) async {
       await montar(tester, 'tribunal');

@@ -1,4 +1,4 @@
-package ec.org.conpociiech.app
+package org.conpociiech.app
 
 import io.flutter.embedding.android.FlutterActivity
 

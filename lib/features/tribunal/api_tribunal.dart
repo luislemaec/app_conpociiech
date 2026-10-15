@@ -96,6 +96,40 @@ class ApiTribunal {
     return MiembroDetalle.desdeJson(json!);
   }
 
+  /// Agrega una persona a la iglesia del usuario, como «Nuevo» en Personas de TEC WEB.
+  /// La iglesia la pone TEC; valida cédula, cronograma y que no sea miembro de otra iglesia.
+  Future<MiembroDetalle> crearMiembro({
+    required String nombres,
+    required String documento,
+    String? sexo,
+    required bool habilitado,
+  }) async {
+    final json = await _sesion.autenticada(
+      (token) => _cliente.enviar(
+        'POST',
+        '/tribunal/iglesia/miembros',
+        token: token,
+        cuerpo: {
+          'nombres': nombres,
+          'documento': documento,
+          'sexo': sexo,
+          'habilitado': habilitado,
+        },
+      ),
+    );
+    return MiembroDetalle.desdeJson(json!);
+  }
+
+  /// Da de baja a un miembro (baja lógica, como la papelera de TEC WEB): TEC desactiva el
+  /// vínculo con la iglesia y conserva el historial.
+  Future<void> darDeBajaMiembro(int miembroId) => _sesion.autenticada(
+    (token) => _cliente.enviar(
+      'DELETE',
+      '/tribunal/iglesia/miembros/$miembroId',
+      token: token,
+    ),
+  );
+
   // ---------------------------------------------------------------- Escrutinio del Presidente
 
   static const String _acta = '/tribunal/presidente/acta';

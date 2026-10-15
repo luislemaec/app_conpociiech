@@ -259,6 +259,13 @@ class TecSimulado {
   /// Datos de la persona por id de miembro (se crean al consultarlos).
   final Map<int, Map<String, dynamic>> personas = {};
 
+  /// Ids de miembros agregados y dados de baja desde la App.
+  final List<int> altas = [];
+  final List<int> bajas = [];
+
+  /// Cédula de una persona activa en otra iglesia (TEC rechaza el alta).
+  static const String cedulaEnOtraIglesia = '0601234567';
+
   /// Guardados de datos de persona que llegaron a TEC (sin cambios no debe haber).
   int actualizacionesPersona = 0;
 
@@ -637,6 +644,19 @@ class TecSimulado {
       };
       if (persona.group(2) == null && metodo == 'GET')
         return _json(200, detalle());
+      // Baja lógica (GestionMovilService.darDeBajaMiembro → eliminarPorId).
+      if (persona.group(2) == null && metodo == 'DELETE') {
+        if (!edicionAbierta) {
+          return _error(
+            409,
+            'EDICION_CERRADA',
+            'La actualización del padrón está cerrada por el cronograma electoral.',
+          );
+        }
+        bajas.add(id);
+        miembros.removeAt(i);
+        return http.Response('', 204);
+      }
       if (persona.group(2) != null && metodo == 'PUT') {
         if (!edicionAbierta) {
           return _error(
@@ -698,6 +718,69 @@ class TecSimulado {
         }
         return _json(200, detalle());
       }
+    }
+
+    // Alta (GestionMovilService.crearMiembro → guardarDesdeDTO), en la iglesia del usuario.
+    if (ruta == '/tribunal/iglesia/miembros' && metodo == 'POST') {
+      if (!edicionAbierta) {
+        return _error(
+          409,
+          'EDICION_CERRADA',
+          'La actualización del padrón está cerrada por el cronograma electoral.',
+        );
+      }
+      final nombres = (cuerpo['nombres'] as String? ?? '').trim();
+      final documento = (cuerpo['documento'] as String? ?? '').trim();
+      if (nombres.isEmpty) {
+        return _error(
+          400,
+          'DATOS_INVALIDOS',
+          'Los nombres de la persona son obligatorios.',
+        );
+      }
+      if (!RegExp(r'^\d{10}$').hasMatch(documento) ||
+          documento == cedulaInvalida) {
+        return _error(
+          400,
+          'DATOS_INVALIDOS',
+          'La cédula ingresada no es válida.',
+        );
+      }
+      if (documento == cedulaEnOtraIglesia) {
+        return _error(
+          409,
+          'CONFLICTO_IGLESIA',
+          'La persona ya es miembro activo de la iglesia Iglesia Norte.',
+        );
+      }
+      final id =
+          miembros.fold<int>(
+            0,
+            (m, e) => e['id'] as int > m ? e['id'] as int : m,
+          ) +
+          1;
+      final habilitado = cuerpo['habilitado'] as bool? ?? true;
+      miembros.add({
+        'id': id,
+        'nombre': nombres,
+        'habilitado': habilitado,
+        'revisado': true,
+        'sexo': cuerpo['sexo'],
+      });
+      personas[id] = {
+        'nombres': nombres,
+        'documento': documento,
+        'sexo': cuerpo['sexo'],
+      };
+      altas.add(id);
+      return _json(201, {
+        'id': id,
+        'nombre': nombres,
+        ...personas[id]!,
+        'habilitado': habilitado,
+        'revisado': true,
+        'permiteEdicion': edicionAbierta,
+      });
     }
 
     const ubicacion = {

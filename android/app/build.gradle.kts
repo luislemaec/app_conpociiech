@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "ec.org.conpociiech.app"
+    namespace = "org.conpociiech.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -18,7 +18,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "ec.org.conpociiech.app"
+        applicationId = "org.conpociiech.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

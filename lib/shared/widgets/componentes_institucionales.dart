@@ -294,7 +294,9 @@ class FilaInformativa extends StatelessWidget {
   Widget build(BuildContext context) {
     final texto = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: DisenoApp.sm + DisenoApp.xs),
+      padding: const EdgeInsets.symmetric(
+        vertical: DisenoApp.sm + DisenoApp.xs,
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

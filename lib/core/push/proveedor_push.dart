@@ -76,7 +76,7 @@ class ConfiguracionFirebase {
       appId: appId,
       messagingSenderId: remitente,
       projectId: proyecto,
-      iosBundleId: 'ec.org.conpociiech.app',
+      iosBundleId: 'org.conpociiech.app',
     );
   }
 }

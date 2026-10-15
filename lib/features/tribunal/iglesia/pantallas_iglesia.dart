@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../../../core/router/app_router.dart';
 import '../api_tribunal.dart';
 import '../widgets_tribunal.dart';
+import 'pantalla_editar_miembro.dart';
 import '../../../shared/widgets/estados_app.dart';
 import '../../../shared/widgets/etiquetas.dart';
 
@@ -111,26 +112,57 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
       if (_desplazamiento.position.extentAfter < 300) _cargarMas();
     });
     _reiniciar();
+    _consultarCronograma();
+  }
+
+  /// Si el cronograma permite editar el padrón (lo informa TEC); null mientras se consulta.
+  /// Solo habilita «Agregar persona», como el botón «Nuevo» de la web; TEC vuelve a validar.
+  bool? _permiteEdicion;
+
+  Future<void> _consultarCronograma() async {
+    try {
+      final iglesia = await context.read<ApiTribunal>().iglesia();
+      if (mounted) setState(() => _permiteEdicion = iglesia.permiteEdicion);
+    } catch (_) {
+      // Sin el dato, el botón queda disponible y TEC decide al guardar.
+      if (mounted) setState(() => _permiteEdicion = true);
+    }
   }
 
   /// Única entrada a la edición: abre «Datos de la persona» (que consulta el detalle
-  /// actualizado a TEC) y, si se guardó, actualiza solo esa fila, sin recargar la lista.
+  /// actualizado a TEC). Si se guardó, actualiza solo esa fila; si se dio de baja, la
+  /// quita. No recarga la lista.
   Future<void> _editar(Miembro miembro) async {
-    final actualizado = await context.push<MiembroDetalle>(
+    final resultado = await context.push<ResultadoMiembro>(
       Rutas.editarMiembro(miembro.id),
     );
-    if (actualizado == null || !mounted) return;
-    final i = _miembros.indexWhere((m) => m.id == actualizado.id);
-    if (i < 0) return;
-    setState(() {
-      _miembros[i] = Miembro(
-        id: actualizado.id,
-        nombre: actualizado.nombre,
-        sexo: actualizado.sexo,
-        habilitado: actualizado.habilitado,
-        revisado: actualizado.revisado,
-      );
-    });
+    if (resultado == null || !mounted) return;
+    switch (resultado) {
+      case MiembroGuardado(:final detalle):
+        final i = _miembros.indexWhere((m) => m.id == detalle.id);
+        if (i < 0) return;
+        setState(() {
+          _miembros[i] = Miembro(
+            id: detalle.id,
+            nombre: detalle.nombre,
+            sexo: detalle.sexo,
+            habilitado: detalle.habilitado,
+            revisado: detalle.revisado,
+          );
+        });
+      case MiembroDadoDeBaja(:final id):
+        setState(() {
+          final antes = _miembros.length;
+          _miembros.removeWhere((m) => m.id == id);
+          _total -= antes - _miembros.length;
+        });
+    }
+  }
+
+  /// Agrega una persona y vuelve a consultar la lista para mostrarla en su orden.
+  Future<void> _agregar() async {
+    final resultado = await context.push<ResultadoMiembro>(Rutas.nuevoMiembro);
+    if (resultado is MiembroGuardado && mounted) _reiniciar();
   }
 
   @override
@@ -244,14 +276,29 @@ class _PantallaMiembrosIglesiaState extends State<PantallaMiembrosIglesia> {
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                _soloPendientes
-                    ? '${formatoNumero(_total)} pendientes de revisión'
-                    : '${formatoNumero(_total)} miembros',
-                style: tema.textTheme.bodySmall,
-              ),
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                Text(
+                  _soloPendientes
+                      ? '${formatoNumero(_total)} pendientes de revisión'
+                      : '${formatoNumero(_total)} miembros',
+                  style: tema.textTheme.bodySmall,
+                ),
+                Tooltip(
+                  message: _permiteEdicion == false
+                      ? 'El cronograma no permite editar el padrón.'
+                      : 'Registrar una persona en la iglesia',
+                  child: FilledButton.tonalIcon(
+                    onPressed: _permiteEdicion == true ? _agregar : null,
+                    icon: const Icon(Icons.person_add_alt_1_outlined),
+                    label: const Text('Agregar persona'),
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(child: _lista()),

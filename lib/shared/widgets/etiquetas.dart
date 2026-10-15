@@ -20,7 +20,9 @@ class EtiquetaSemantica extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final par = context.semanticos.de(tono);
-    final estilo = Theme.of(context).textTheme.labelMedium?.copyWith(color: par.primerPlano);
+    final estilo = Theme.of(
+      context,
+    ).textTheme.labelMedium?.copyWith(color: par.primerPlano);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: par.fondo,
@@ -32,7 +34,9 @@ class EtiquetaSemantica extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icono != null) ...[
-              ExcludeSemantics(child: Icon(icono, size: 16, color: par.primerPlano)),
+              ExcludeSemantics(
+                child: Icon(icono, size: 16, color: par.primerPlano),
+              ),
               const SizedBox(width: DisenoApp.xs + 2),
             ],
             Flexible(child: Text(texto, style: estilo)),
@@ -46,16 +50,16 @@ class EtiquetaSemantica extends StatelessWidget {
 /// Sexo almacenado en TEC (`M`, `F` o sin dato). Nunca se deduce de otros datos.
 abstract final class Sexo {
   static String texto(String? valor) => switch (valor) {
-        'M' => 'Masculino',
-        'F' => 'Femenino',
-        _ => 'Sin dato',
-      };
+    'M' => 'Masculino',
+    'F' => 'Femenino',
+    _ => 'Sin dato',
+  };
 
   static IconData icono(String? valor) => switch (valor) {
-        'M' => Icons.male,
-        'F' => Icons.female,
-        _ => Icons.person_outline,
-      };
+    'M' => Icons.male,
+    'F' => Icons.female,
+    _ => Icons.person_outline,
+  };
 }
 
 /// Sexo en modo consulta: ícono + texto (el ícono complementa, no reemplaza).
@@ -71,7 +75,9 @@ class DatoSexo extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        ExcludeSemantics(child: Icon(Sexo.icono(valor), size: 18, color: color)),
+        ExcludeSemantics(
+          child: Icon(Sexo.icono(valor), size: 18, color: color),
+        ),
         const SizedBox(width: DisenoApp.xs),
         Text(Sexo.texto(valor), style: tema.textTheme.bodySmall),
       ],
@@ -106,15 +112,19 @@ class EtiquetaPendienteRevision extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const EtiquetaSemantica(
-        texto: 'Pendiente de revisión',
-        tono: TonoSemantico.advertencia,
-        icono: Icons.schedule,
-      );
+    texto: 'Pendiente de revisión',
+    tono: TonoSemantico.advertencia,
+    icono: Icons.schedule,
+  );
 }
 
 /// Aviso en línea (información, advertencia o error) con el tono semántico.
 class AvisoSemantico extends StatelessWidget {
-  const AvisoSemantico(this.texto, {super.key, this.tono = TonoSemantico.informacion});
+  const AvisoSemantico(
+    this.texto, {
+    super.key,
+    this.tono = TonoSemantico.informacion,
+  });
 
   final String texto;
   final TonoSemantico tono;
@@ -139,12 +149,16 @@ class AvisoSemantico extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ExcludeSemantics(child: Icon(icono, size: 20, color: par.primerPlano)),
+            ExcludeSemantics(
+              child: Icon(icono, size: 20, color: par.primerPlano),
+            ),
             const SizedBox(width: DisenoApp.sm),
             Expanded(
               child: Text(
                 texto,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: par.primerPlano),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: par.primerPlano),
               ),
             ),
           ],

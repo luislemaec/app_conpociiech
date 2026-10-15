@@ -1,6 +1,6 @@
 # Release de Android
 
-Guía para firmar y generar la App CONPOCIIECH (`ec.org.conpociiech.app`). La llave de firma
+Guía para firmar y generar la App CONPOCIIECH (paquete `org.conpociiech.app`, definitivo una vez publicado en Google Play). La llave de firma
 y sus claves **nunca** entran al repositorio: `android/key.properties`, `*.jks` y
 `*.keystore` están en `.gitignore`, y un build de release sin `key.properties` falla a
 propósito (no se firma con la llave de depuración).

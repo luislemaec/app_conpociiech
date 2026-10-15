@@ -10,8 +10,9 @@ import 'package:http/io_client.dart';
 /// instaladas por el usuario, por eso la CA se entrega en la compilación de desarrollo.
 http.Client crearClienteHttp({String? caDesarrollo}) {
   if (caDesarrollo == null || caDesarrollo.isEmpty) return http.Client();
-  final contexto = SecurityContext(withTrustedRoots: true)
-    ..setTrustedCertificatesBytes(utf8.encode(pemDesdeDefinicion(caDesarrollo)));
+  final contexto = SecurityContext(
+    withTrustedRoots: true,
+  )..setTrustedCertificatesBytes(utf8.encode(pemDesdeDefinicion(caDesarrollo)));
   return IOClient(HttpClient(context: contexto));
 }
 

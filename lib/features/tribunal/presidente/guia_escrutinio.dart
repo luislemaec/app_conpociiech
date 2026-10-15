@@ -17,7 +17,8 @@ class GuiaEscrutinio extends StatelessWidget {
     titulo: 'Flujo del escrutinio',
     children: [
       const Text(
-        '1. Apertura → 2. Conteo → 3. Acta física → 4. Cierre → 5. Validación',
+        // «›» y no «→»: Montserrat no incluye la flecha.
+        '1. Apertura › 2. Conteo › 3. Acta física › 4. Cierre › 5. Validación',
       ),
       if (acta.fase case final fase?) ...[
         const SizedBox(height: 12),
